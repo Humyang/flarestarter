@@ -210,6 +210,8 @@ export const zh: Dict = {
     messageLabel: '公开留言', messageOptional: '可选', messagePlaceholder: '用 FlareStarter 一个周末就上线了我们的 SaaS',
     messageNote: '会作为引言展示在赞助墙上，附在你的名字旁。',
     sponsorBtn: '赞助', secure: '通过 Stripe 安全支付 · 可随时取消',
+    payWithCard: '银行卡', payWithWechat: '微信支付',
+    wechatNote: '微信端会显示换算后的人民币金额',
     notConfigured: '本实例未配置赞助功能。',
     successTitle: '感谢你的支持', successBody: '你的赞助已到账，意义重大。',
     manageLink: '管理 / 取消你的赞助',

@@ -1,0 +1,1 @@
+ALTER TABLE `sponsorship` ADD `amount_usd` integer;

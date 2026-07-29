@@ -120,6 +120,13 @@
       "when": 1783248036431,
       "tag": "0016_bent_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1785331714270,
+      "tag": "0017_far_klaw",
+      "breakpoints": true
     }
   ]
 }

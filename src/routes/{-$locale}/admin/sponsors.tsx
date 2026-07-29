@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useTranslation } from '@/features/i18n/provider'
 import { fmtDateTime } from '@/lib/format-date'
+import { formatMinor } from '@/features/sponsor/currency'
 import { getSponsorshipsFn, setSponsorshipHiddenFn } from '@/features/admin/middleware'
 
 interface SponsorsSearch { page?: number; pageSize?: number }
@@ -70,7 +71,14 @@ function SponsorsAdmin() {
               <tr key={r.id} className="border-t border-border">
                 <td className="px-4 py-2 font-mono text-xs">{r.github || '—'}</td>
                 <td className="px-4 py-2 font-mono text-xs">{r.email || '—'}</td>
-                <td className="px-4 py-2 font-mono">${(r.amount / 100).toFixed(2)}{r.mode === 'recurring' ? t('sponsor.perMo') : ''}</td>
+                {/* Charged currency first — that reconciles against Stripe. For non-USD
+                    rows the frozen USD equivalent follows, since that is what tiers use. */}
+                <td className="px-4 py-2 font-mono whitespace-nowrap">
+                  {formatMinor(r.amount, r.currency)}{r.mode === 'recurring' ? t('sponsor.perMo') : ''}
+                  {r.currency.toLowerCase() !== 'usd' && (
+                    <span className="ml-1.5 text-xs text-fg-3">≈ {formatMinor(r.amountUsd ?? r.amount, 'usd')}</span>
+                  )}
+                </td>
                 <td className="px-4 py-2">
                   <span className="font-mono text-xs text-fg-2">{r.status}</span>
                   {r.hidden && <Badge variant="warn" className="ml-2">{t('admin.hiddenBadge')}</Badge>}

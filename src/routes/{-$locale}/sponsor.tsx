@@ -19,8 +19,8 @@ export const Route = createFileRoute('/{-$locale}/sponsor')({
   }),
   loader: async () => {
     const origin = await getOrigin()
-    const { configured, sponsors } = await getSponsorConfig()
-    return { origin, configured, sponsors }
+    const { configured, wechatEnabled, sponsors } = await getSponsorConfig()
+    return { origin, configured, wechatEnabled, sponsors }
   },
   head: ({ loaderData, params }) => {
     const origin = loaderData?.origin ?? ''
@@ -41,7 +41,7 @@ export const Route = createFileRoute('/{-$locale}/sponsor')({
 })
 
 function SponsorPage() {
-  const { configured, sponsors } = Route.useLoaderData()
+  const { configured, wechatEnabled, sponsors } = Route.useLoaderData()
   const { status, session_id } = Route.useSearch()
   const { theme, user } = rootRoute.useLoaderData()
   const { t } = useTranslation()
@@ -88,7 +88,7 @@ function SponsorPage() {
             </div>
             <div className="mt-10">
               {configured ? (
-                <SponsorPanel />
+                <SponsorPanel wechatEnabled={wechatEnabled} />
               ) : (
                 <p className="text-center text-fg-3">{t('sponsor.notConfigured')}</p>
               )}

@@ -1,10 +1,13 @@
 import type Stripe from 'stripe'
+import { usdCentsFallback } from './currency'
 
 export interface SponsorRecord {
   id: string
   email: string | null
   amount: number
   currency: string
+  /** USD cents frozen at checkout, used for wall tiering. See currency.ts. */
+  amountUsd: number
   mode: 'once' | 'recurring'
   stripeSessionId: string
   stripeSubscriptionId: string | null
@@ -33,6 +36,14 @@ export function isExclusiveSponsorEvent(ev: SponsorEvent): boolean {
   return ev.type === 'created' || ev.type === 'renewed' || ev.type === 'canceled'
 }
 
+/** Read back the USD price written to session metadata at checkout. For a non-USD
+ *  charge this is the only trustworthy USD figure; fall back when absent or invalid. */
+function frozenUsdCents(amountTotal: number, currency: string, meta: Stripe.Metadata | null | undefined): number {
+  const raw = Number(meta?.usd_cents)
+  if (Number.isInteger(raw) && raw > 0) return raw
+  return usdCentsFallback(amountTotal, currency)
+}
+
 export function translateSponsorEvent(event: Stripe.Event): SponsorEvent | null {
   switch (event.type) {
     case 'checkout.session.completed':
@@ -45,13 +56,16 @@ export function translateSponsorEvent(event: Stripe.Event): SponsorEvent | null 
       const recurring = s.mode === 'subscription'
       const subId = typeof s.subscription === 'string' ? s.subscription : (s.subscription?.id ?? null)
       const piId = typeof s.payment_intent === 'string' ? s.payment_intent : (s.payment_intent?.id ?? null)
+      const amount = s.amount_total ?? 0
+      const currency = s.currency ?? 'usd'
       return {
         type: 'created',
         record: {
           id: s.id,
           email: s.customer_details?.email ?? s.customer_email ?? null,
-          amount: s.amount_total ?? 0,
-          currency: s.currency ?? 'usd',
+          amount,
+          currency,
+          amountUsd: frozenUsdCents(amount, currency, s.metadata),
           mode: recurring ? 'recurring' : 'once',
           stripeSessionId: s.id,
           stripeSubscriptionId: subId,
@@ -76,6 +90,9 @@ export function translateSponsorEvent(event: Stripe.Event): SponsorEvent | null 
           email: inv.customer_email ?? null,
           amount: inv.amount_paid,
           currency: inv.currency,
+          // Not metadata.usd_cents: that is the first charge's amount. Monthly is
+          // card-only and always USD, so the amount paid already IS the USD figure.
+          amountUsd: usdCentsFallback(inv.amount_paid, inv.currency),
           mode: 'recurring',
           stripeSessionId: inv.id, // unique per invoice — reuses the idempotency column
           stripeSubscriptionId: subId,

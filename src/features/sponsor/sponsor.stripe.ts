@@ -1,4 +1,6 @@
 import Stripe from 'stripe'
+import { sponsorConfig } from './sponsor.config'
+import { wechatChargeMinor } from './currency'
 
 export interface SponsorStripeEnv {
   STRIPE_SECRET_KEY: string
@@ -10,19 +12,43 @@ function client(env: SponsorStripeEnv): Stripe {
 }
 
 /** Amount-driven sponsorship checkout. Monthly uses an inline recurring price_data
- *  so any amount works without pre-created Stripe prices. */
+ *  so any amount works without pre-created Stripe prices.
+ *
+ *  `method: 'wechat'` forces `mode: 'payment'` and the configured presentment
+ *  currency; callers must have already rejected monthly (see actions.ts). */
 export async function createSponsorCheckout(
   env: SponsorStripeEnv,
-  opts: { mode: 'once' | 'monthly'; amountCents: number; successUrl: string; cancelUrl: string; github?: string; message?: string },
+  opts: { mode: 'once' | 'monthly'; amountCents: number; successUrl: string; cancelUrl: string; github?: string; message?: string; method?: 'card' | 'wechat' },
 ): Promise<{ url: string }> {
   const stripe = client(env)
   const meta: Record<string, string> = { type: 'sponsorship', mode: opts.mode }
   if (opts.github) meta.github = opts.github
   if (opts.message) meta.message = opts.message
+  // The USD price frozen onto the session: a non-USD charge leaves the webhook no USD
+  // figure, so wall tiering reads this back. Server-set, so a client cannot tamper with it.
+  meta.usd_cents = String(opts.amountCents)
   const base = { success_url: opts.successUrl, cancel_url: opts.cancelUrl, metadata: meta } as const
 
   let session: Stripe.Checkout.Session
-  if (opts.mode === 'once') {
+  if (opts.method === 'wechat') {
+    session = await stripe.checkout.sessions.create({
+      ...base,
+      mode: 'payment',
+      // Naming payment_method_types disables dynamic payment methods, so the hosted
+      // page offers WeChat only. wechat_pay requires `client`; 'web' for hosted checkout.
+      payment_method_types: ['wechat_pay'],
+      payment_method_options: { wechat_pay: { client: 'web' } },
+      line_items: [{
+        quantity: 1,
+        price_data: {
+          currency: sponsorConfig.wechat.currency,
+          unit_amount: wechatChargeMinor(opts.amountCents),
+          product_data: { name: 'One-time sponsorship' },
+        },
+      }],
+      payment_intent_data: { metadata: meta },
+    })
+  } else if (opts.mode === 'once') {
     session = await stripe.checkout.sessions.create({
       ...base,
       mode: 'payment',

@@ -10,16 +10,23 @@ beforeAll(async () => {
   await env.DB.exec(
     `CREATE TABLE IF NOT EXISTS sponsorship (` +
     `id TEXT PRIMARY KEY NOT NULL, email TEXT, github TEXT, message TEXT, amount INTEGER NOT NULL, ` +
-    `currency TEXT NOT NULL DEFAULT 'usd', mode TEXT NOT NULL, ` +
+    `currency TEXT NOT NULL DEFAULT 'usd', amount_usd INTEGER, mode TEXT NOT NULL, ` +
     `stripe_session_id TEXT NOT NULL UNIQUE, stripe_subscription_id TEXT, stripe_payment_intent_id TEXT, ` +
     `status TEXT NOT NULL, hidden INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)`,
   )
 })
 
 const rec: SponsorRecord = {
-  id: 'cs_a', email: 'a@example.com', amount: 2500, currency: 'usd',
+  id: 'cs_a', email: 'a@example.com', amount: 2500, currency: 'usd', amountUsd: 2500,
   mode: 'once', stripeSessionId: 'cs_a', stripeSubscriptionId: null, stripePaymentIntentId: null, status: 'completed',
   github: null, message: null,
+}
+
+/** USD row factory: card charges are USD, so amountUsd tracks amount. Use it whenever
+ *  overriding amount, or amountUsd silently stays at rec's 2500 and wall totals lie. */
+const usd = (over: Partial<SponsorRecord>): SponsorRecord => {
+  const r = { ...rec, ...over }
+  return { ...r, amountUsd: over.amountUsd ?? r.amount }
 }
 
 describe('recordSponsorship', () => {
@@ -56,19 +63,39 @@ test('listPublicSponsors dedup: two rows for same github → cumulative amount s
   await env.DB.exec('DELETE FROM sponsorship')
   const db = createDb(env.DB)
   // two valid rows for the same handle must collapse into one entry with the SUM of amounts
-  await recordSponsorship(db, { ...rec, id: 'cs_d1', stripeSessionId: 'cs_d1', github: 'carol', amount: 5000 }, 1000)
-  await recordSponsorship(db, { ...rec, id: 'cs_d2', stripeSessionId: 'cs_d2', github: 'carol', amount: 1000 }, 2000)
+  await recordSponsorship(db, usd({ id: 'cs_d1', stripeSessionId: 'cs_d1', github: 'carol', amount: 5000 }), 1000)
+  await recordSponsorship(db, usd({ id: 'cs_d2', stripeSessionId: 'cs_d2', github: 'carol', amount: 1000 }), 2000)
   const rows = await listPublicSponsors(db)
   expect(rows.filter((r) => r.github === 'carol')).toHaveLength(1)
   expect(rows.find((r) => r.github === 'carol')?.amount).toBe(6000) // cumulative sum, not newest-only
 })
 
+test('listPublicSponsors 混币种：微信(HKD)行按冻结的 amountUsd 计入，不把 HKD 分当 USD 分', async () => {
+  await env.DB.exec('DELETE FROM sponsorship')
+  const db = createDb(env.DB)
+  // One handle: a $25 card charge plus a HK$585 WeChat charge (frozen at $75)
+  await recordSponsorship(db, usd({ id: 'cs_mx1', stripeSessionId: 'cs_mx1', github: 'wxfan', amount: 2500 }), 1000)
+  await recordSponsorship(db, { ...rec, id: 'cs_mx2', stripeSessionId: 'cs_mx2', github: 'wxfan', amount: 58500, currency: 'hkd', amountUsd: 7500 }, 2000)
+  const [row] = await listPublicSponsors(db)
+  expect(row.amount).toBe(10000) // $25 + $75; charged amounts would give 61000 and wrongly reach gold
+})
+
+test('listPublicSponsors 历史行（amountUsd 为 null）回落到 amount', async () => {
+  await env.DB.exec('DELETE FROM sponsorship')
+  const db = createDb(env.DB)
+  await recordSponsorship(db, { ...rec, id: 'cs_lg', stripeSessionId: 'cs_lg', github: 'oldtimer', amount: 4200 }, 1000)
+  // Simulate a row written before the column existed, when charges were USD-only
+  await db.update(sponsorship).set({ amountUsd: null }).where(eq(sponsorship.id, 'cs_lg'))
+  const [row] = await listPublicSponsors(db)
+  expect(row.amount).toBe(4200)
+})
+
 test('listPublicSponsors returns rich rows, sorted by cumulative amount desc, github-only, distinct', async () => {
   await env.DB.exec('DELETE FROM sponsorship')
   const db = createDb(env.DB)
-  await recordSponsorship(db, { ...rec, id: 'cs_p1', stripeSessionId: 'cs_p1', github: 'ada', amount: 10000, message: 'hi', mode: 'recurring', status: 'active' }, 1000)
-  await recordSponsorship(db, { ...rec, id: 'cs_p2', stripeSessionId: 'cs_p2', github: 'bo', amount: 500, message: null, mode: 'once' }, 2000)
-  await recordSponsorship(db, { ...rec, id: 'cs_p3', stripeSessionId: 'cs_p3', github: null, amount: 5000, message: null, mode: 'once' }, 3000)
+  await recordSponsorship(db, usd({ id: 'cs_p1', stripeSessionId: 'cs_p1', github: 'ada', amount: 10000, message: 'hi', mode: 'recurring', status: 'active' }), 1000)
+  await recordSponsorship(db, usd({ id: 'cs_p2', stripeSessionId: 'cs_p2', github: 'bo', amount: 500, message: null, mode: 'once' }), 2000)
+  await recordSponsorship(db, usd({ id: 'cs_p3', stripeSessionId: 'cs_p3', github: null, amount: 5000, message: null, mode: 'once' }), 3000)
   const rows = await listPublicSponsors(db)
   expect(rows.map((r) => r.github)).toEqual(['ada', 'bo']) // sorted by amount desc, not createdAt
   expect(rows[0]).toMatchObject({ github: 'ada', amount: 10000, message: 'hi', mode: 'recurring' })
@@ -99,7 +126,7 @@ describe('applySponsorEvent', () => {
   })
   test('canceled：续费多期后取消，只终结 active 锚点行，已付累计留在墙上', async () => {
     const db = createDb(env.DB)
-    const base = { ...rec, github: 'kai', mode: 'recurring' as const, stripeSubscriptionId: 'sub_hist', amount: 500 }
+    const base = usd({ github: 'kai', mode: 'recurring', stripeSubscriptionId: 'sub_hist', amount: 500 })
     await applySponsorEvent(db, { type: 'created', record: { ...base, id: 'cs_h0', stripeSessionId: 'cs_h0', status: 'active' } }, 1000)
     await applySponsorEvent(db, { type: 'renewed', record: { ...base, id: 'in_h1', stripeSessionId: 'in_h1', status: 'completed' } }, 2000)
     await applySponsorEvent(db, { type: 'renewed', record: { ...base, id: 'in_h2', stripeSessionId: 'in_h2', status: 'completed' } }, 3000)
@@ -142,7 +169,7 @@ describe('listPublicSponsors（累计聚合）', () => {
     await env.DB.exec('DELETE FROM sponsorship') // isolate from earlier tests' leftover rows (exact-array assertion below)
     const db = createDb(env.DB)
     const mk = (id: string, over: Partial<SponsorRecord>) =>
-      applySponsorEvent(db, { type: 'created', record: { ...rec, id, stripeSessionId: id, ...over } }, 1000)
+      applySponsorEvent(db, { type: 'created', record: usd({ id, stripeSessionId: id, ...over }) }, 1000)
     await mk('w1', { github: 'alice', amount: 1500 })
     await mk('w2', { github: 'alice', amount: 2000, message: 'newest note' })
     await mk('w3', { github: 'bob', amount: 10000, mode: 'recurring', status: 'active', stripeSubscriptionId: 'sub_b' })

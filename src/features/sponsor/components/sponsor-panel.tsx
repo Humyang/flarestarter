@@ -4,11 +4,14 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { dictionaries } from '@/features/i18n/locale'
 import { sponsorConfig } from '../sponsor.config'
+import { formatMinor, wechatChargeMinor } from '../currency'
 import { startSponsorship } from '../actions'
 
 type Period = 'monthly' | 'once'
 
-export function SponsorPanel() {
+/** `wechatEnabled` comes from `getSponsorConfig()`. The button additionally requires
+ *  period === 'once': Stripe's wechat_pay does not support subscriptions. */
+export function SponsorPanel({ wechatEnabled = false }: { wechatEnabled?: boolean }) {
   const { t, locale } = useTranslation()
 
   // Default to first enabled mode
@@ -20,7 +23,7 @@ export function SponsorPanel() {
   const [custom, setCustom] = useState('')
   const [github, setGithub] = useState('')
   const [message, setMessage] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<'card' | 'wechat' | null>(null)
 
   const tiers = sponsorConfig.tiers[period]
   const isCustom = idx === -1
@@ -33,13 +36,17 @@ export function SponsorPanel() {
   // Access raw dict for perks (string arrays — t() only returns strings)
   const dict = dictionaries[locale]
 
-  async function go() {
-    if (!canSubmit) return
-    setBusy(true)
+  const showWechat = wechatEnabled && period === 'once'
+  const wechatCharge = formatMinor(wechatChargeMinor(amountCents), sponsorConfig.wechat.currency)
+
+  async function go(method: 'card' | 'wechat') {
+    if (!canSubmit || busy) return
+    setBusy(method)
     try {
       const { url } = await startSponsorship({
         data: {
           mode: period,
+          method,
           amountCents,
           github: github || undefined,
           message: message || undefined,
@@ -47,7 +54,7 @@ export function SponsorPanel() {
       })
       window.location.href = url
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
@@ -202,21 +209,47 @@ export function SponsorPanel() {
           </label>
         )}
 
+        {/* Label by rail only when there are two: naming one leaves the other implicitly
+            "the other payment method". With no choice to make, the rail name is noise. */}
         <button
           type="button"
-          disabled={busy || !canSubmit}
-          onClick={go}
+          disabled={!!busy || !canSubmit}
+          onClick={() => go('card')}
           className={cn(
             buttonVariants({ size: 'lg' }),
             'w-full',
             !canSubmit && 'pointer-events-none opacity-50',
           )}
         >
-          {t('sponsor.sponsorBtn')}
+          {showWechat ? t('sponsor.payWithCard') : t('sponsor.sponsorBtn')}
           {amountCents >= sponsorConfig.minCents
             ? ` $${amountCents / 100}${period === 'monthly' ? t('sponsor.perMo') : ''}`
             : ''}
         </button>
+
+        {showWechat && (
+          <>
+            <button
+              type="button"
+              disabled={!!busy || !canSubmit}
+              onClick={() => go('wechat')}
+              className={cn(
+                buttonVariants({ variant: 'outline', size: 'lg' }),
+                'mt-2 w-full',
+                !canSubmit && 'pointer-events-none opacity-50',
+              )}
+            >
+              {/* WeChat charges in HKD, a different figure from the card button's USD —
+                  show it here so the amount at Stripe's checkout is not a surprise. */}
+              {t('sponsor.payWithWechat')}
+              {canSubmit ? ` ${wechatCharge}` : ''}
+            </button>
+            <p className="mt-1.5 text-center font-mono text-xs text-fg-3">
+              {t('sponsor.wechatNote')}
+            </p>
+          </>
+        )}
+
         <p className="mt-2 text-center font-mono text-xs text-fg-3">
           {t('sponsor.secure')}
         </p>

@@ -5,8 +5,11 @@ export const sponsorship = sqliteTable('sponsorship', {
   email: text('email'),                                        // Stripe 收集，可能为空
   github: text('github'),                                      // 选填 GitHub 用户名（致谢名单来源）
   message: text('message'),                                    // 选填公开留言（≤80，展示在赞助墙）
-  amount: integer('amount').notNull(),                         // 最小货币单位 (cents)
+  amount: integer('amount').notNull(),                         // minor units actually charged (HKD cents for WeChat); never converted
   currency: text('currency').notNull().default('usd'),
+  // USD cents frozen at checkout. Wall tiers sum this — summing mixed currencies
+  // reads HK$78 as $78 (see currency.ts). null = row predates the column (USD-only era).
+  amountUsd: integer('amount_usd'),
   mode: text('mode').notNull(),                                // 'once' | 'recurring'
   stripeSessionId: text('stripe_session_id').notNull().unique(),
   stripeSubscriptionId: text('stripe_subscription_id'),        // 仅 recurring

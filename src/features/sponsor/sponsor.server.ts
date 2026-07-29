@@ -13,6 +13,7 @@ export async function recordSponsorship(db: DB, rec: SponsorRecord, now: number,
       email: rec.email,
       amount: rec.amount,
       currency: rec.currency,
+      amountUsd: rec.amountUsd,
       mode: rec.mode,
       stripeSessionId: rec.stripeSessionId,
       stripeSubscriptionId: rec.stripeSubscriptionId,
@@ -67,16 +68,21 @@ export async function applySponsorEvent(db: DB, ev: SponsorEvent, now: number): 
   }
 }
 
+/** `amount` here is frozen USD cents, not the charged currency — wall thresholds are USD. */
 export interface PublicSponsor { github: string; amount: number; message: string | null; mode: string }
 
 /** GitHub-opted-in sponsors for the wall. Wall tier = CUMULATIVE total of a
  *  handle's money-kept rows (completed/active/canceled — canceled means the
  *  subscription ended, not that the payment was returned; only refunded/
  *  disputed/hidden are excluded); message = newest non-empty; `/mo` badge
- *  only while an active recurring row exists. */
+ *  only while an active recurring row exists.
+ *
+ *  Totals use `amountUsd` (frozen USD cents), not the charged `amount`: WeChat rows are
+ *  HKD minor units, and summing them mixed reads HK$78 as $78. A null `amountUsd` means
+ *  the row predates the column, when charges were USD-only, so `amount` is the USD figure. */
 export async function listPublicSponsors(db: DB): Promise<PublicSponsor[]> {
   const rows = await db
-    .select({ github: sponsorship.github, amount: sponsorship.amount, message: sponsorship.message, mode: sponsorship.mode, status: sponsorship.status, createdAt: sponsorship.createdAt })
+    .select({ github: sponsorship.github, amount: sponsorship.amount, amountUsd: sponsorship.amountUsd, message: sponsorship.message, mode: sponsorship.mode, status: sponsorship.status, createdAt: sponsorship.createdAt })
     .from(sponsorship)
     .where(and(
       isNotNull(sponsorship.github),
@@ -88,11 +94,12 @@ export async function listPublicSponsors(db: DB): Promise<PublicSponsor[]> {
   const byHandle = new Map<string, PublicSponsor>()
   for (const r of rows) {
     const g = r.github as string
+    const usd = r.amountUsd ?? r.amount
     const cur = byHandle.get(g)
     if (!cur) {
-      byHandle.set(g, { github: g, amount: r.amount, message: r.message || null, mode: r.status === 'active' && r.mode === 'recurring' ? 'recurring' : 'once' })
+      byHandle.set(g, { github: g, amount: usd, message: r.message || null, mode: r.status === 'active' && r.mode === 'recurring' ? 'recurring' : 'once' })
     } else {
-      cur.amount += r.amount
+      cur.amount += usd
       if (!cur.message && r.message) cur.message = r.message
       if (r.status === 'active' && r.mode === 'recurring') cur.mode = 'recurring'
     }
@@ -102,13 +109,14 @@ export async function listPublicSponsors(db: DB): Promise<PublicSponsor[]> {
 
 export interface AdminSponsorRow {
   id: string; email: string | null; github: string | null; amount: number; currency: string
+  amountUsd: number | null // frozen USD equivalent; null for rows predating the column
   mode: string; status: string; message: string | null; hidden: boolean; createdAt: Date | string
 }
 
 /** Admin governance view: full sponsorship list (incl. hidden rows), paginated, newest first. */
 export async function listSponsorships(db: DB, p: { page: number; pageSize: number }): Promise<{ rows: AdminSponsorRow[]; total: number }> {
   const rows = await db
-    .select({ id: sponsorship.id, email: sponsorship.email, github: sponsorship.github, amount: sponsorship.amount, currency: sponsorship.currency, mode: sponsorship.mode, status: sponsorship.status, message: sponsorship.message, hidden: sponsorship.hidden, createdAt: sponsorship.createdAt })
+    .select({ id: sponsorship.id, email: sponsorship.email, github: sponsorship.github, amount: sponsorship.amount, currency: sponsorship.currency, amountUsd: sponsorship.amountUsd, mode: sponsorship.mode, status: sponsorship.status, message: sponsorship.message, hidden: sponsorship.hidden, createdAt: sponsorship.createdAt })
     .from(sponsorship)
     .orderBy(desc(sponsorship.createdAt))
     .limit(p.pageSize)

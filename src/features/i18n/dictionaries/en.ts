@@ -224,6 +224,8 @@ export const en = {
     messageLabel: 'Public message', messageOptional: 'optional', messagePlaceholder: 'FlareStarter shipped our SaaS in a weekend',
     messageNote: 'Shown as a quote on the sponsor wall, next to your name.',
     sponsorBtn: 'Sponsor', secure: 'Secure checkout via Stripe · cancel anytime',
+    payWithCard: 'Card', payWithWechat: 'WeChat Pay',
+    wechatNote: 'The WeChat app shows the converted CNY amount',
     notConfigured: 'Sponsorship is not configured on this instance.',
     successTitle: 'Thank you for your support', successBody: 'Your sponsorship came through. It means a lot.',
     manageLink: 'Manage or cancel your sponsorship',

@@ -58,7 +58,7 @@ FlareStarter 只交付能跑的东西：仓库里的每个功能都是真实实�
 | **邮件** | [Resend](https://resend.com) + 字符串模板（React Email 在 workerd 上不可用）。如果没配 API key，邮件会直接打印到控制台，确保本地开发不会被卡住。 |
 | **等待列表 (Waitlist)** | 完整的 pre-launch 报名闭环：公开报名页、Turnstile 防刷、后台管理页 + CSV 导出，报名邮箱自动同步到 [Resend](https://resend.com) audience（未配 key 时优雅跳过）。 |
 | **更新日志 (Changelog)** | MDX 驱动、按语言区分、带 `published` 开关的站内 `/changelog` 页——直接把版本记录做成产品页面，而不只是仓库里的 `CHANGELOG.md`。 |
-| **赞助 (Sponsor)** | 独立 `/sponsor` 页,演示真实 Stripe 收款闭环:**纯捐赠不解锁**（不碰 entitlement）。一次性与月度均为**金额驱动**（PWYW/自定义金额,通过 `price_data.recurring` 内联创建,无需预设 Price ID）。GitHub 致谢头像墙**按金额分层展示**,支持公开留言。月度赞助可随时经 Stripe 门户取消。webhook 按 metadata 分流 + 幂等入库。未配 Stripe key 时显示「未配置」态（优雅降级）。定制赞助页改 `src/features/sponsor/sponsor.config.ts`（金额/档位/开关/阈值）与 i18n `sponsor.*` 文案,无需改组件。 |
+| **赞助 (Sponsor)** | 独立 `/sponsor` 页,演示真实 Stripe 收款闭环:**纯捐赠不解锁**（不碰 entitlement）。一次性与月度均为**金额驱动**（PWYW/自定义金额,通过 `price_data.recurring` 内联创建,无需预设 Price ID）。一次性赞助另提供**微信支付**（走 Stripe 的 `wechat_pay`,无需微信商户号;收款币种与固定汇率在 config 里配,USD 等值下单时冻结——见 [计费文档](https://flarestarter.com/docs/features/billing)）。GitHub 致谢头像墙**按金额分层展示**,支持公开留言。月度赞助可随时经 Stripe 门户取消。webhook 按 metadata 分流 + 幂等入库。未配 Stripe key 时显示「未配置」态（优雅降级）。定制赞助页改 `src/features/sponsor/sponsor.config.ts`（金额/档位/开关/阈值）与 i18n `sponsor.*` 文案,无需改组件。 |
 | **反馈箱 (Feedback)** | 登录用户提交反馈 +「我的反馈」列表（可删自己 `open` 状态的条目）；后台治理页做状态流转（open/planned/shipped/closed）与一句话回复；admin 提交的反馈带 Pro 徽章（演示 `hasProAccess`）。同时是**加你自己功能的教学范本**：一个纵向切片跑通归属过滤（`db/scope`）、纯函数层、两套门控与双池测试——见 [反馈文档](https://flarestarter.com/docs/features/feedback)。 |
 | **i18n** | 通过 TanStack 的 `{-$locale}` 可选前缀做路径式多语言路由——英文在 `/`，中文在 `/zh`。营销文案与 UI 字符串都已内置翻译。 |
 | **SEO** | 按语言生成的 sitemap、`hreflang`、canonical URL、OpenGraph 标签、`robots.txt`，以及需登录页面的 `noindex` 处理。 |
@@ -156,7 +156,7 @@ drizzle/           # 生成的 SQL 迁移文件（仓库根，与 src/ 同级）
 - `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`（同时决定 canonical / sitemap origin）—— **必填**；启动时校验（见 [安全文档](https://flarestarter.com/docs/platform/security)）。
 - `RESEND_API_KEY`、`EMAIL_FROM`（邮件服务；留空则由控制台捕获）。
 - `GOOGLE_CLIENT_ID/SECRET`、`GITHUB_CLIENT_ID/SECRET`（可选社交登录）。
-- `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`STRIPE_PRICE_PRO_*`（计费服务）。
+- `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`STRIPE_PRICE_PRO_*`（计费服务）；`STRIPE_WECHAT_PAY_ENABLED`（可选,设 `false` 关掉赞助页的微信支付入口）。
 - `ADMIN_EMAILS`（管理员邮箱）。
 - `TURNSTILE_SITE_KEY`、`TURNSTILE_SECRET_KEY`（可选的 bot 防护——见 [安全文档](https://flarestarter.com/docs/platform/security)）。
 - `CF_ANALYTICS_TOKEN`、`SENTRY_DSN`（可选的数据分析 + 错误上报——见 [可观测性文档](https://flarestarter.com/docs/platform/observability)）。

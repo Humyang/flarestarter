@@ -11,12 +11,12 @@ describe('translateSponsorEvent · checkout.session.completed', () => {
     const ev = translateSponsorEvent(evt('checkout.session.completed', {
       object: 'checkout.session', id: 'cs_1', mode: 'payment', payment_status: 'paid', amount_total: 2500, currency: 'usd',
       customer_details: { email: 'a@example.com' }, subscription: null, payment_intent: 'pi_1',
-      metadata: { type: 'sponsorship', mode: 'once', github: 'octocat', message: 'love it' },
+      metadata: { type: 'sponsorship', mode: 'once', github: 'octocat', message: 'love it', usd_cents: '2500' },
     }))
     expect(ev).toEqual({
       type: 'created',
       record: {
-        id: 'cs_1', email: 'a@example.com', amount: 2500, currency: 'usd', mode: 'once',
+        id: 'cs_1', email: 'a@example.com', amount: 2500, currency: 'usd', amountUsd: 2500, mode: 'once',
         stripeSessionId: 'cs_1', stripeSubscriptionId: null, stripePaymentIntentId: 'pi_1',
         status: 'completed', github: 'octocat', message: 'love it',
       },
@@ -26,12 +26,12 @@ describe('translateSponsorEvent · checkout.session.completed', () => {
     const ev = translateSponsorEvent(evt('checkout.session.completed', {
       object: 'checkout.session', id: 'cs_2', mode: 'subscription', payment_status: 'paid', amount_total: 500, currency: 'usd',
       customer_details: { email: 'b@example.com' }, subscription: 'sub_1', payment_intent: null,
-      metadata: { type: 'sponsorship', mode: 'monthly', github: 'hubber' },
+      metadata: { type: 'sponsorship', mode: 'monthly', github: 'hubber', usd_cents: '500' },
     }))
     expect(ev).toEqual({
       type: 'created',
       record: {
-        id: 'cs_2', email: 'b@example.com', amount: 500, currency: 'usd', mode: 'recurring',
+        id: 'cs_2', email: 'b@example.com', amount: 500, currency: 'usd', amountUsd: 500, mode: 'recurring',
         stripeSessionId: 'cs_2', stripeSubscriptionId: 'sub_1', stripePaymentIntentId: null,
         status: 'active', github: 'hubber', message: null,
       },
@@ -60,6 +60,44 @@ describe('translateSponsorEvent · checkout.session.completed', () => {
   })
 })
 
+describe('translateSponsorEvent · 微信支付（非 USD 收款）', () => {
+  const wechatSession = {
+    object: 'checkout.session', id: 'cs_wx', mode: 'payment', payment_status: 'paid',
+    amount_total: 58500, currency: 'hkd', // $75 × 7.8 = HK$585
+    customer_details: { email: 'wx@example.com' }, subscription: null, payment_intent: 'pi_wx',
+    metadata: { type: 'sponsorship', mode: 'once', github: 'wxfan', usd_cents: '7500' },
+  }
+
+  test('实收 HKD 原样入库，amountUsd 取 metadata 冻结值（而非把 58500 当成 $585）', () => {
+    const ev = translateSponsorEvent(evt('checkout.session.completed', wechatSession))
+    expect(ev).toEqual({
+      type: 'created',
+      record: {
+        id: 'cs_wx', email: 'wx@example.com', amount: 58500, currency: 'hkd', amountUsd: 7500, mode: 'once',
+        stripeSessionId: 'cs_wx', stripeSubscriptionId: null, stripePaymentIntentId: 'pi_wx',
+        status: 'completed', github: 'wxfan', message: null,
+      },
+    })
+  })
+
+  test('metadata.usd_cents 缺失 → 按配置汇率兜底反算，不把 HKD 分当 USD 分', () => {
+    const ev = translateSponsorEvent(evt('checkout.session.completed', {
+      ...wechatSession, metadata: { type: 'sponsorship', mode: 'once' },
+    }))
+    // 58500 HKD cents / 7.8 = 7500 USD cents
+    expect(ev && 'record' in ev ? ev.record.amountUsd : null).toBe(7500)
+  })
+
+  test('metadata.usd_cents 非法（非整数/负数）→ 走兜底，不写脏值', () => {
+    for (const bad of ['abc', '-100', '75.5', '']) {
+      const ev = translateSponsorEvent(evt('checkout.session.completed', {
+        ...wechatSession, metadata: { type: 'sponsorship', mode: 'once', usd_cents: bad },
+      }))
+      expect(ev && 'record' in ev ? ev.record.amountUsd : null).toBe(7500)
+    }
+  })
+})
+
 describe('translateSponsorEvent · invoice.paid（续费入账）', () => {
   const baseInvoice = {
     object: 'invoice', id: 'in_2', amount_paid: 500, currency: 'usd', customer_email: 'b@example.com',
@@ -72,7 +110,7 @@ describe('translateSponsorEvent · invoice.paid（续费入账）', () => {
     expect(translateSponsorEvent(evt('invoice.paid', baseInvoice))).toEqual({
       type: 'renewed',
       record: {
-        id: 'in_2', email: 'b@example.com', amount: 500, currency: 'usd', mode: 'recurring',
+        id: 'in_2', email: 'b@example.com', amount: 500, currency: 'usd', amountUsd: 500, mode: 'recurring',
         stripeSessionId: 'in_2', stripeSubscriptionId: 'sub_1', stripePaymentIntentId: null,
         status: 'completed', github: 'hubber', message: 'go go',
       },

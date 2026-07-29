@@ -39,6 +39,8 @@ const envSchema = z
     STRIPE_PRICE_PRO_MONTHLY: optional,
     STRIPE_PRICE_PRO_YEARLY: optional,
     STRIPE_PRICE_PRO_LIFETIME: optional,
+    // Kill switch for WeChat Pay on sponsorships — see features/sponsor/sponsor.config.ts.
+    STRIPE_WECHAT_PAY_ENABLED: optional,
     ADMIN_EMAILS: optional,
     TURNSTILE_SITE_KEY: optional,
     TURNSTILE_SECRET_KEY: optional,
