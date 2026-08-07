@@ -1,10 +1,14 @@
 export const AGENT_AUTH_SCHEME = 'Bearer'
 export const AGENT_CLAIM_TOKEN_HEADER = 'x-agent-claim-token'
 export const MAX_RENDER_OUTPUT_BYTES = 500 * 1024 * 1024
+export const AGENT_LEASE_DURATION_MS = 2 * 60 * 1000
+export const AGENT_HEARTBEAT_INTERVAL_MS = 30 * 1000
+export const MAX_AGENT_ATTEMPTS = 3
 
 export interface RenderAgentClaim {
   id: string
   claimToken: string
+  leaseExpiresAt: string
   title: string
   account: {
     id: string

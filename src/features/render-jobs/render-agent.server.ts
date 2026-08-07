@@ -1,18 +1,66 @@
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, gt, isNotNull, isNull, lte, lt, sql } from 'drizzle-orm'
 import type { DB } from '@/db/client'
 import { user } from '@/features/auth/auth.schema'
 import { renderAsset, renderJob } from './render-job.schema'
-import type { RenderAgentClaim, RenderAgentStatusInput } from './render-agent.shared'
+import {
+  AGENT_LEASE_DURATION_MS,
+  MAX_AGENT_ATTEMPTS,
+  type RenderAgentClaim,
+  type RenderAgentStatusInput,
+} from './render-agent.shared'
 
 interface ClaimedJob {
   id: string
   userId: string
   claimToken: string
+  claimExpiresAt: Date | null
   outputKey: string | null
   status: string
 }
 
+function leaseExpiry(now: number): Date {
+  return new Date(now + AGENT_LEASE_DURATION_MS)
+}
+
+export async function recoverExpiredAgentJobs(db: DB, now: number): Promise<{ failed: number; requeued: number }> {
+  const expiredAt = new Date(now)
+  const failed = await db.update(renderJob).set({
+    agentClaimToken: null,
+    agentClaimExpiresAt: null,
+    rendererTaskId: null,
+    status: 'failed',
+    phase: 'agent-timeout',
+    outputKey: null,
+    error: 'The local processing agent stopped responding after multiple recovery attempts.',
+    updatedAt: expiredAt,
+  }).where(and(
+    eq(renderJob.status, 'running'),
+    isNotNull(renderJob.agentClaimToken),
+    lte(renderJob.agentClaimExpiresAt, expiredAt),
+    sql`${renderJob.agentAttemptCount} >= ${MAX_AGENT_ATTEMPTS}`,
+  )).returning({ id: renderJob.id })
+
+  const requeued = await db.update(renderJob).set({
+    agentClaimToken: null,
+    agentClaimExpiresAt: null,
+    rendererTaskId: null,
+    status: 'queued',
+    phase: 'awaiting-agent',
+    outputKey: null,
+    error: null,
+    updatedAt: expiredAt,
+  }).where(and(
+    eq(renderJob.status, 'running'),
+    isNotNull(renderJob.agentClaimToken),
+    lte(renderJob.agentClaimExpiresAt, expiredAt),
+    lt(renderJob.agentAttemptCount, MAX_AGENT_ATTEMPTS),
+  )).returning({ id: renderJob.id })
+
+  return { failed: failed.length, requeued: requeued.length }
+}
+
 export async function claimNextAgentJob(db: DB, sourceOrigin: string, now: number): Promise<RenderAgentClaim | null> {
+  await recoverExpiredAgentJobs(db, now)
   const candidates = await db.select({
     id: renderJob.id,
     userId: renderJob.userId,
@@ -37,8 +85,11 @@ export async function claimNextAgentJob(db: DB, sourceOrigin: string, now: numbe
 
   for (const candidate of candidates) {
     const claimToken = crypto.randomUUID()
+    const claimExpiresAt = leaseExpiry(now)
     const claimed = await db.update(renderJob).set({
       agentClaimToken: claimToken,
+      agentClaimExpiresAt: claimExpiresAt,
+      agentAttemptCount: sql`${renderJob.agentAttemptCount} + 1`,
       status: 'running',
       phase: 'agent-claimed',
       error: null,
@@ -56,6 +107,7 @@ export async function claimNextAgentJob(db: DB, sourceOrigin: string, now: numbe
     return {
       id: candidate.id,
       claimToken,
+      leaseExpiresAt: claimExpiresAt.toISOString(),
       title: candidate.title,
       account: {
         id: candidate.userId,
@@ -78,6 +130,7 @@ export async function findClaimedAgentJob(db: DB, id: string, claimToken: string
     id: renderJob.id,
     userId: renderJob.userId,
     claimToken: renderJob.agentClaimToken,
+    claimExpiresAt: renderJob.agentClaimExpiresAt,
     outputKey: renderJob.outputKey,
     status: renderJob.status,
   }).from(renderJob).where(and(
@@ -94,18 +147,40 @@ export async function updateClaimedAgentJob(
   input: RenderAgentStatusInput,
   now: number,
 ): Promise<boolean> {
+  const nowDate = new Date(now)
   const updated = await db.update(renderJob).set({
     status: input.status,
     phase: input.phase,
+    agentClaimExpiresAt: input.status === 'running' ? leaseExpiry(now) : null,
     error: input.status === 'failed' ? input.error ?? 'Smart Clip agent failed' : null,
     ...(input.rendererTaskId ? { rendererTaskId: input.rendererTaskId } : {}),
     updatedAt: new Date(now),
   }).where(and(
     eq(renderJob.id, id),
     eq(renderJob.agentClaimToken, input.claimToken),
-    inArray(renderJob.status, ['queued', 'running']),
+    eq(renderJob.status, 'running'),
+    gt(renderJob.agentClaimExpiresAt, nowDate),
   )).returning({ id: renderJob.id })
   return updated.length === 1
+}
+
+export async function renewClaimedAgentJob(
+  db: DB,
+  id: string,
+  claimToken: string,
+  now: number,
+): Promise<boolean> {
+  const nowDate = new Date(now)
+  const renewed = await db.update(renderJob).set({
+    agentClaimExpiresAt: leaseExpiry(now),
+    updatedAt: nowDate,
+  }).where(and(
+    eq(renderJob.id, id),
+    eq(renderJob.agentClaimToken, claimToken),
+    eq(renderJob.status, 'running'),
+    gt(renderJob.agentClaimExpiresAt, nowDate),
+  )).returning({ id: renderJob.id })
+  return renewed.length === 1
 }
 
 export async function completeClaimedAgentJob(
@@ -115,16 +190,19 @@ export async function completeClaimedAgentJob(
   outputKey: string,
   now: number,
 ): Promise<boolean> {
+  const nowDate = new Date(now)
   const updated = await db.update(renderJob).set({
     status: 'completed',
     phase: 'done',
+    agentClaimExpiresAt: null,
     outputKey,
     error: null,
     updatedAt: new Date(now),
   }).where(and(
     eq(renderJob.id, id),
     eq(renderJob.agentClaimToken, claimToken),
-    inArray(renderJob.status, ['queued', 'running']),
+    eq(renderJob.status, 'running'),
+    gt(renderJob.agentClaimExpiresAt, nowDate),
   )).returning({ id: renderJob.id })
   return updated.length === 1
 }

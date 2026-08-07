@@ -17,6 +17,8 @@ export const renderJob = sqliteTable('render_job', {
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
   assetId: text('asset_id').notNull().references(() => renderAsset.id, { onDelete: 'cascade' }),
   agentClaimToken: text('agent_claim_token'),
+  agentClaimExpiresAt: integer('agent_claim_expires_at', { mode: 'timestamp_ms' }),
+  agentAttemptCount: integer('agent_attempt_count').notNull().default(0),
   rendererTaskId: text('renderer_task_id'),
   title: text('title').notNull(),
   status: text('status').notNull(),

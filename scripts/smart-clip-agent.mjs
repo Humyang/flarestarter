@@ -57,6 +57,7 @@ if (sharedSecret.length < 32) throw new Error('AGENT_SHARED_SECRET must be at le
 
 const pollIntervalMs = Math.max(1000, Number(process.env.AGENT_POLL_INTERVAL_MS || 5000))
 const taskPollIntervalMs = Math.max(1000, Number(process.env.SMART_CLIP_POLL_INTERVAL_MS || 3000))
+const leaseHeartbeatMs = Math.max(5000, Number(process.env.AGENT_HEARTBEAT_INTERVAL_MS || 30_000))
 const maxSourceBytes = 100 * 1024 * 1024
 const maxOutputBytes = 500 * 1024 * 1024
 const requestTimeoutMs = Math.max(10_000, Number(process.env.AGENT_REQUEST_TIMEOUT_MS || 60_000))
@@ -100,6 +101,43 @@ async function reportStatus(job, status, phase, error = null, rendererTaskId = n
     body: JSON.stringify({ claimToken: job.claimToken, status, phase, error, rendererTaskId }),
   })
   if (!response.ok) throw new Error(`Status update failed: ${await responseError(response)}`)
+}
+
+function startLeaseHeartbeat(job) {
+  let active = true
+  let leaseLost = false
+  let timer = null
+
+  const heartbeat = async () => {
+    try {
+      const response = await request(`${flareBase}/api/render-agent/jobs/${encodeURIComponent(job.id)}/heartbeat`, {
+        method: 'POST',
+        headers: { ...agentHeaders(), 'content-type': 'application/json' },
+        body: JSON.stringify({ claimToken: job.claimToken }),
+      })
+      if (response.status === 409) {
+        leaseLost = true
+        console.error(`[agent] lease lost for ${job.id}`)
+      } else if (!response.ok) {
+        throw new Error(await responseError(response))
+      }
+    } catch (error) {
+      console.error(`[agent] heartbeat failed for ${job.id}:`, error instanceof Error ? error.message : error)
+    } finally {
+      if (active && !leaseLost) timer = setTimeout(heartbeat, leaseHeartbeatMs)
+    }
+  }
+
+  timer = setTimeout(heartbeat, leaseHeartbeatMs)
+  return {
+    assertActive() {
+      if (leaseLost) throw new Error('Agent claim expired and was reassigned')
+    },
+    stop() {
+      active = false
+      if (timer) clearTimeout(timer)
+    },
+  }
 }
 
 function validateSourceUrl(job) {
@@ -242,12 +280,15 @@ async function uploadOutput(job, outputUrl) {
 
 async function processJob(job) {
   console.log(`[agent] claimed ${job.id}`)
+  const lease = startLeaseHeartbeat(job)
   try {
     await reportStatus(job, 'running', 'source-download')
     const localSourceUrl = await importSource(job)
+    lease.assertActive()
     await reportStatus(job, 'running', 'source-imported')
     await reportStatus(job, 'running', 'smart-clip-submit')
     let task = await submitSmartClip(job, localSourceUrl)
+    lease.assertActive()
     let lastPhase = smartClipPhase(task.status)
     await reportStatus(job, 'running', lastPhase, null, task.taskId)
     while (!stopping) {
@@ -265,6 +306,7 @@ async function processJob(job) {
       if (task.status === 2) throw new Error(task.error || 'Smart Clip failed')
       await sleep(taskPollIntervalMs)
       task = await readSmartClipTask(task.taskId)
+      lease.assertActive()
     }
     throw new Error('Agent stopped while processing')
   } catch (error) {
@@ -275,6 +317,8 @@ async function processJob(job) {
       console.error(`[agent] could not report failure for ${job.id}:`, reportError)
     }
     console.error(`[agent] failed ${job.id}: ${message}`)
+  } finally {
+    lease.stop()
   }
 }
 

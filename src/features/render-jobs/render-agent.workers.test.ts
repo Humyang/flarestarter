@@ -5,6 +5,7 @@ import { createDb } from '@/db/client'
 import { scopeFromUser } from '@/db/scope'
 import { handleRenderAgentRequest } from './render-agent.api'
 import { handleRenderAssetRequest } from './render-asset.api'
+import { claimNextAgentJob, recoverExpiredAgentJobs, renewClaimedAgentJob } from './render-agent.server'
 import { createRenderRecords, updateOwnedRenderJob } from './render-job.server'
 import { renderJob } from './render-job.schema'
 
@@ -25,7 +26,8 @@ beforeEach(async () => {
     )`,
     `CREATE TABLE render_job (
       id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL, asset_id TEXT NOT NULL,
-      agent_claim_token TEXT UNIQUE, renderer_task_id TEXT UNIQUE, title TEXT NOT NULL, status TEXT NOT NULL, phase TEXT,
+      agent_claim_token TEXT UNIQUE, agent_claim_expires_at INTEGER, agent_attempt_count INTEGER NOT NULL DEFAULT 0,
+      renderer_task_id TEXT UNIQUE, title TEXT NOT NULL, status TEXT NOT NULL, phase TEXT,
       output_key TEXT, error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
       FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
       FOREIGN KEY (asset_id) REFERENCES render_asset(id) ON DELETE CASCADE
@@ -78,6 +80,15 @@ test('authenticates, claims once, reports progress, and uploads the output', asy
   const source = await handleRenderAssetRequest(new Request(claimBody.job.source.url), bindings)
   expect(source.status).toBe(200)
   expect(new TextDecoder().decode(await source.arrayBuffer())).toBe('source')
+
+  const heartbeat = await handleRenderAgentRequest(new Request(
+    `https://dve2.com/api/render-agent/jobs/${record.jobId}/heartbeat`, {
+      method: 'POST',
+      headers: { ...authorization, 'content-type': 'application/json' },
+      body: JSON.stringify({ claimToken: claimBody.job.claimToken }),
+    },
+  ), bindings)
+  expect(heartbeat.status).toBe(200)
 
   const progress = await handleRenderAgentRequest(new Request(
     `https://dve2.com/api/render-agent/jobs/${record.jobId}/status`, {
@@ -175,4 +186,33 @@ test('requires a positive Content-Length before accepting rendered output', asyn
 
   const [job] = await createDb(env.DB).select().from(renderJob).where(eq(renderJob.id, record.jobId))
   expect(job).toMatchObject({ status: 'running', phase: 'agent-claimed', outputKey: null })
+})
+
+test('reclaims an expired lease, fences the old agent, and increments attempts', async () => {
+  const record = await queueJob()
+  const db = createDb(env.DB)
+  const first = await claimNextAgentJob(db, 'https://dve2.com', 1000)
+  expect(first).toMatchObject({ id: record.jobId, leaseExpiresAt: new Date(1000 + 120_000).toISOString() })
+
+  await db.update(renderJob).set({ agentClaimExpiresAt: new Date(0) }).where(eq(renderJob.id, record.jobId))
+  await expect(recoverExpiredAgentJobs(db, 3000)).resolves.toMatchObject({ requeued: 1, failed: 0 })
+  await expect(renewClaimedAgentJob(db, record.jobId, first!.claimToken, 4000)).resolves.toBe(false)
+
+  const second = await claimNextAgentJob(db, 'https://dve2.com', 5000)
+  expect(second).toMatchObject({ id: record.jobId })
+  const [job] = await db.select().from(renderJob).where(eq(renderJob.id, record.jobId))
+  expect(job).toMatchObject({ status: 'running', phase: 'agent-claimed', agentAttemptCount: 2 })
+})
+
+test('fails a job after the maximum number of expired lease recoveries', async () => {
+  const record = await queueJob()
+  const db = createDb(env.DB)
+  await claimNextAgentJob(db, 'https://dve2.com', 1000)
+  await db.update(renderJob).set({ agentClaimExpiresAt: new Date(0), agentAttemptCount: 3 }).where(eq(renderJob.id, record.jobId))
+
+  await expect(recoverExpiredAgentJobs(db, 3000)).resolves.toMatchObject({ requeued: 0, failed: 1 })
+  const [job] = await db.select().from(renderJob).where(eq(renderJob.id, record.jobId))
+  expect(job).toMatchObject({
+    status: 'failed', phase: 'agent-timeout', agentClaimToken: null, agentClaimExpiresAt: null,
+  })
 })

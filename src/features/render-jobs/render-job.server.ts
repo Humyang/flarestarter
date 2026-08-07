@@ -56,6 +56,8 @@ export async function updateOwnedRenderJob(
 export async function retryOwnedRenderJob(db: DB, scope: Scope, id: string, now: number): Promise<boolean> {
   const retried = await db.update(renderJob).set({
     agentClaimToken: null,
+    agentClaimExpiresAt: null,
+    agentAttemptCount: 0,
     rendererTaskId: null,
     status: 'queued',
     phase: 'awaiting-agent',
@@ -84,6 +86,7 @@ function toView(job: RenderJob, fileName: string): RenderJobView {
     status: job.status as RenderJobStatus,
     phase: job.phase,
     error: job.error,
+    agentAttemptCount: job.agentAttemptCount,
     readyToDownload: job.status === 'completed' && !!job.outputKey,
     createdAt: new Date(job.createdAt).toISOString(),
     updatedAt: new Date(job.updatedAt).toISOString(),

@@ -26,7 +26,8 @@ beforeEach(async () => {
     )`,
     `CREATE TABLE render_job (
       id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL, asset_id TEXT NOT NULL,
-      agent_claim_token TEXT UNIQUE, renderer_task_id TEXT UNIQUE, title TEXT NOT NULL, status TEXT NOT NULL, phase TEXT,
+      agent_claim_token TEXT UNIQUE, agent_claim_expires_at INTEGER, agent_attempt_count INTEGER NOT NULL DEFAULT 0,
+      renderer_task_id TEXT UNIQUE, title TEXT NOT NULL, status TEXT NOT NULL, phase TEXT,
       output_key TEXT, error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
       FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
       FOREIGN KEY (asset_id) REFERENCES render_asset(id) ON DELETE CASCADE

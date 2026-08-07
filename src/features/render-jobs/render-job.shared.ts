@@ -9,6 +9,7 @@ export interface RenderJobView {
   status: RenderJobStatus
   phase: string | null
   error: string | null
+  agentAttemptCount: number
   readyToDownload: boolean
   createdAt: string
   updatedAt: string
