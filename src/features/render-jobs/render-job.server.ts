@@ -53,6 +53,23 @@ export async function updateOwnedRenderJob(
     .where(and(ownedBy(renderJob, scope), eq(renderJob.id, id)))
 }
 
+export async function retryOwnedRenderJob(db: DB, scope: Scope, id: string, now: number): Promise<boolean> {
+  const retried = await db.update(renderJob).set({
+    agentClaimToken: null,
+    rendererTaskId: null,
+    status: 'queued',
+    phase: 'awaiting-agent',
+    outputKey: null,
+    error: null,
+    updatedAt: new Date(now),
+  }).where(and(
+    ownedBy(renderJob, scope),
+    eq(renderJob.id, id),
+    eq(renderJob.status, 'failed'),
+  )).returning({ id: renderJob.id })
+  return retried.length === 1
+}
+
 export async function getAssetByToken(db: DB, id: string, token: string) {
   const [asset] = await db.select().from(renderAsset)
     .where(and(eq(renderAsset.id, id), eq(renderAsset.sourceToken, token))).limit(1)

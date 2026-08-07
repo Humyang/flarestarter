@@ -60,11 +60,12 @@ export const zh: Dict = {
     nav: '视频渲染', title: '渲染视频', subtitle: '上传 MP4，并提交到本地 Smart Clip Renderer。',
     titleLabel: '项目名称', fileLabel: '源视频', fileHint: '仅支持 MP4，最大 100 MB。',
     submit: '提交渲染', uploading: '上传中…', submitted: '渲染任务已提交。', mine: '我的任务', empty: '暂无渲染任务。',
-    download: '下载成片',
+    download: '下载成片', retry: '重试', retrying: '重试中…', retried: '渲染任务已重新排队。',
     status: { submitting: '提交中', queued: '排队中', running: '渲染中', completed: '已完成', failed: '失败' },
     errors: {
       noFile: '请选择 MP4 文件。', empty: '视频文件为空。', type: '仅支持 MP4 视频。',
-      size: '视频超过 100 MB。', title: '请输入项目名称。', smartClip: '本地智能剪辑服务不可用。', unknown: '提交渲染任务失败。',
+      size: '视频超过 100 MB。', title: '请输入项目名称。', smartClip: '本地智能剪辑服务不可用。',
+      notRetryable: '仅失败的渲染任务可以重试。', unknown: '提交渲染任务失败。',
     },
   },
   legal: {

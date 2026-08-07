@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { Download, Film, Upload } from 'lucide-react'
+import { Download, Film, RotateCcw, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { requireUser } from '@/features/auth/middleware'
 import { getEntitlement } from '@/features/billing/middleware'
-import { createRenderJobFn, listRenderJobsFn, syncRenderJobsFn } from '@/features/render-jobs/actions'
+import { createRenderJobFn, listRenderJobsFn, retryRenderJobFn, syncRenderJobsFn } from '@/features/render-jobs/actions'
 import type { RenderJobStatus, RenderJobView } from '@/features/render-jobs/render-job.shared'
 import { AppShell } from '@/components/app/app-shell'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +38,7 @@ function RenderJobsPage() {
   const [jobs, setJobs] = useState(initial.jobs)
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
+  const [retryingId, setRetryingId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const hasActive = jobs.some((job) => ['submitting', 'queued', 'running'].includes(job.status))
 
@@ -70,6 +71,20 @@ function RenderJobsPage() {
       toast.error(t('renderJobs.errors.unknown'))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function retry(jobId: string) {
+    setRetryingId(jobId)
+    try {
+      const result = await retryRenderJobFn({ data: { id: jobId } })
+      setJobs(result.jobs)
+      if (result.ok) toast.success(t('renderJobs.retried'))
+      else toast.error(t(`renderJobs.errors.${result.reason}`))
+    } catch {
+      toast.error(t('renderJobs.errors.unknown'))
+    } finally {
+      setRetryingId(null)
     }
   }
 
@@ -118,11 +133,24 @@ function RenderJobsPage() {
                   </p>
                   {job.error && <p className="mb-0 mt-2 text-sm text-destructive">{job.error}</p>}
                 </div>
-                {job.readyToDownload && (
-                  <a href={`/api/render-outputs/${job.id}`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-                    <Download size={15} /> {t('renderJobs.download')}
-                  </a>
-                )}
+                <div className="flex min-h-9 items-center gap-2">
+                  {job.status === 'failed' && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={retryingId !== null}
+                      onClick={() => void retry(job.id)}
+                    >
+                      <RotateCcw size={15} /> {retryingId === job.id ? t('renderJobs.retrying') : t('renderJobs.retry')}
+                    </Button>
+                  )}
+                  {job.readyToDownload && (
+                    <a href={`/api/render-outputs/${job.id}`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                      <Download size={15} /> {t('renderJobs.download')}
+                    </a>
+                  )}
+                </div>
               </div>
             </Card>
           ))}

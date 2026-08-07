@@ -1,8 +1,16 @@
 import { beforeEach, expect, test } from 'vitest'
 import { env } from 'cloudflare:test'
+import { eq } from 'drizzle-orm'
 import { createDb } from '@/db/client'
 import { scopeFromUser } from '@/db/scope'
-import { createRenderRecords, findOwnedRenderJob, listRenderJobs, updateOwnedRenderJob } from './render-job.server'
+import { renderJob } from './render-job.schema'
+import {
+  createRenderRecords,
+  findOwnedRenderJob,
+  listRenderJobs,
+  retryOwnedRenderJob,
+  updateOwnedRenderJob,
+} from './render-job.server'
 
 beforeEach(async () => {
   const statements = [
@@ -44,4 +52,34 @@ test('creates an owned asset/job pair and hides it from another user', async () 
     rendererTaskId: `flare-${record.jobId}`, status: 'completed', phase: 'done', outputKey: 'out.mp4',
   }, 2000)
   expect(await listRenderJobs(db, owner)).toMatchObject([{ status: 'completed', readyToDownload: true }])
+})
+
+test('requeues only an owned failed job and clears stale agent state', async () => {
+  const db = createDb(env.DB)
+  const owner = scopeFromUser('user-a')
+  const other = scopeFromUser('user-b')
+  const record = await createRenderRecords(db, owner, {
+    title: 'Retry me', fileName: 'source.mp4', contentType: 'video/mp4', sizeBytes: 1234, now: 1000,
+  })
+  await db.update(renderJob).set({
+    agentClaimToken: 'old-claim',
+    rendererTaskId: 'old-task',
+    status: 'failed',
+    phase: 'agent-failed',
+    outputKey: 'stale-output.mp4',
+    error: 'fetch failed',
+  }).where(eq(renderJob.id, record.jobId))
+
+  await expect(retryOwnedRenderJob(db, other, record.jobId, 2000)).resolves.toBe(false)
+  await expect(retryOwnedRenderJob(db, owner, record.jobId, 3000)).resolves.toBe(true)
+  await expect(retryOwnedRenderJob(db, owner, record.jobId, 4000)).resolves.toBe(false)
+  await expect(findOwnedRenderJob(db, owner, record.jobId)).resolves.toMatchObject({
+    agentClaimToken: null,
+    rendererTaskId: null,
+    status: 'queued',
+    phase: 'awaiting-agent',
+    outputKey: null,
+    error: null,
+    updatedAt: new Date(3000),
+  })
 })

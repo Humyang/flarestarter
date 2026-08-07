@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { redirect } from '@tanstack/react-router'
-import type { CreateRenderJobResult, RenderJobView } from './render-job.shared'
+import type { CreateRenderJobResult, RenderJobView, RetryRenderJobResult } from './render-job.shared'
 
 async function currentUser() {
   const { readUser } = await import('@/features/auth/readUser.server')
@@ -74,6 +74,26 @@ export const createRenderJobFn = createServerFn({ method: 'POST' })
     }
     const jobs = await listRenderJobs(db, scope)
     return { ok: true, job: jobs.find((job) => job.id === record.jobId)! }
+  })
+
+export const retryRenderJobFn = createServerFn({ method: 'POST' })
+  .validator((data: { id: string }) => ({ id: String(data.id ?? '') }))
+  .handler(async ({ data }): Promise<RetryRenderJobResult> => {
+    const { env } = await import('@/lib/env')
+    const { createDb } = await import('@/db/client')
+    const { scopeFromUser } = await import('@/db/scope')
+    const { agentBridgeConfigured } = await import('./render-agent.shared')
+    const { listRenderJobs, retryOwnedRenderJob } = await import('./render-job.server')
+    const user = await currentUser()
+    const scope = scopeFromUser(user.id)
+    const db = createDb(env.DB)
+    const jobs = () => listRenderJobs(db, scope)
+    const agentSecret = (env as unknown as { AGENT_SHARED_SECRET?: string }).AGENT_SHARED_SECRET
+    if (!agentBridgeConfigured(agentSecret)) return { ok: false, reason: 'smartClip', jobs: await jobs() }
+    const retried = data.id.length > 0 && await retryOwnedRenderJob(db, scope, data.id, Date.now())
+    return retried
+      ? { ok: true, jobs: await jobs() }
+      : { ok: false, reason: 'notRetryable', jobs: await jobs() }
   })
 
 export const syncRenderJobsFn = createServerFn({ method: 'POST' }).handler(async (): Promise<RenderJobView[]> => {

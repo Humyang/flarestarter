@@ -16,6 +16,10 @@ export interface RenderJobView {
 
 export type RenderUploadReason = 'noFile' | 'empty' | 'type' | 'size' | 'title' | 'smartClip'
 
+export type RetryRenderJobResult =
+  | { ok: true; jobs: RenderJobView[] }
+  | { ok: false; reason: 'notRetryable' | 'smartClip'; jobs: RenderJobView[] }
+
 export type CreateRenderJobResult =
   | { ok: true; job: RenderJobView }
   | { ok: false; reason: RenderUploadReason }
