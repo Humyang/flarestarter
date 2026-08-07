@@ -2,8 +2,8 @@
  * Test helpers for billing workers integration tests.
  *
  * Provides:
- * - applyBillingSchema: creates user, subscription, processed_webhook_events
- *   tables in the test D1 (idempotent via IF NOT EXISTS).
+ * - applyBillingSchema: creates user, subscription, processed_webhook_events,
+ *   and refunded_purchase tables in the test D1 (idempotent via IF NOT EXISTS).
  * - seedUserAndSubscription: inserts a user row + subscription row.
  */
 import type { DB } from '@/db/client'
@@ -54,6 +54,16 @@ export async function applyBillingSchema(d1: D1Database): Promise<void> {
       "processed_at" INTEGER NOT NULL,
       "status" TEXT NOT NULL DEFAULT 'done'
     )`,
+
+    // lifetime purchase refund tombstones (drizzle/0018_productive_bromley.sql)
+    `CREATE TABLE IF NOT EXISTS "refunded_purchase" (
+      "payment_intent_id" TEXT PRIMARY KEY NOT NULL,
+      "customer_id" TEXT NOT NULL,
+      "refund_event_id" TEXT NOT NULL UNIQUE,
+      "refunded_at" INTEGER NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS "refunded_purchase_customer_id_idx"
+      ON "refunded_purchase" ("customer_id")`,
   ]
 
   for (const sql of stmts) {

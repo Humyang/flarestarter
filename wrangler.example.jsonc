@@ -146,6 +146,8 @@
 		},
 		"production": {
 			"name": "flarestarter-production",
+			// Example custom domain; replace before deployment.
+			// "routes": [{ "pattern": "app.example.com", "custom_domain": true }],
 			"triggers": {
 				"crons": [
 					"0 3 * * *"

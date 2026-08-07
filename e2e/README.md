@@ -27,7 +27,23 @@ boots `pnpm dev` automatically, then tears it down. Screenshots are written to
 
 If a dev server is already running on :3000 it is reused (outside CI).
 
-## What `admin-users.spec.ts` covers
+## What the specs cover
+
+`free-plan.spec.ts` verifies the default unpaid flow:
+
+- A newly registered user can enter `/app` and is labelled Free.
+- The account page offers Upgrade and never exposes subscription management.
+- The Pro area remains a locked preview whose CTA leads to `/pricing`.
+- Registration creates no row in `subscription`, so it does not create billing state.
+
+`free-render-job.spec.ts` verifies the local free render flow:
+
+- A free user uploads an MP4 from `/app/render`.
+- FlareStarter stores the source in R2 and submits a local-only Renderer task.
+- The completed output returns to R2 and downloads through an authenticated route.
+- The user still has no `subscription` row after rendering.
+
+`admin-users.spec.ts` verifies the admin user-management flow:
 
 - Signs in as an admin (`admin@example.com` — in `ADMIN_EMAILS`, so it gets the
   admin role; the spec marks the email verified directly in the local D1 as a

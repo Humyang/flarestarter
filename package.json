@@ -13,15 +13,16 @@
     "typecheck": "fumadocs-mdx && tsc --noEmit",
     "postinstall": "fumadocs-mdx",
     "deploy:staging": "CLOUDFLARE_ENV=staging pnpm build && wrangler deploy",
-    "deploy:prod": "CLOUDFLARE_ENV=production pnpm build && wrangler deploy",
+    "deploy:prod": "CLOUDFLARE_ENV=production pnpm build && wrangler deploy --env production",
     "cf-typegen": "wrangler types",
     "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply flarestarter-db --local",
     "db:migrate:staging": "wrangler d1 migrations apply flarestarter-db-staging --env staging --remote",
-    "db:migrate:prod": "wrangler d1 migrations apply flarestarter-db-prod --env production --remote",
+    "db:migrate:prod": "wrangler d1 migrations apply flarestarter-prod --env production --remote",
     "db:seed:local": "wrangler d1 execute flarestarter-db --local --file=./scripts/seed.sql",
-    "db:reset:local": "rm -rf .wrangler/state/v3/d1 && pnpm db:migrate:local && pnpm db:seed:local"
+    "db:reset:local": "rm -rf .wrangler/state/v3/d1 && pnpm db:migrate:local && pnpm db:seed:local",
+    "smart-clip:agent": "node scripts/smart-clip-agent.mjs"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.26.0",

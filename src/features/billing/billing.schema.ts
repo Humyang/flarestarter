@@ -31,4 +31,19 @@ export const processedWebhookEvents = sqliteTable('processed_webhook_events', {
   status: text('status').notNull().default('done'),
 })
 
+/**
+ * Permanent tombstones for fully refunded lifetime purchases. Stripe does not
+ * guarantee webhook delivery order, so a refund can arrive while the matching
+ * checkout completion is still being retried. Keeping the payment intent here
+ * prevents that late completion from granting Pro again.
+ */
+export const refundedPurchases = sqliteTable('refunded_purchase', {
+  paymentIntentId: text('payment_intent_id').primaryKey(),
+  customerId: text('customer_id').notNull(),
+  refundEventId: text('refund_event_id').notNull().unique(),
+  refundedAt: integer('refunded_at', { mode: 'timestamp_ms' }).notNull(),
+}, (t) => [
+  index('refunded_purchase_customer_id_idx').on(t.customerId),
+])
+
 export type Subscription = typeof subscription.$inferSelect

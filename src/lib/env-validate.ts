@@ -19,6 +19,11 @@ const optional = z.preprocess(
   z.string().optional(),
 )
 
+const optionalSecret = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+  z.string().min(32, 'AGENT_SHARED_SECRET must be at least 32 characters').optional(),
+)
+
 const envSchema = z
   .object({
     // Core — the app cannot function without these.
@@ -46,6 +51,8 @@ const envSchema = z
     TURNSTILE_SECRET_KEY: optional,
     CF_ANALYTICS_TOKEN: optional,
     SENTRY_DSN: optional,
+    SMART_CLIP_API_URL: optional,
+    AGENT_SHARED_SECRET: optionalSecret,
   })
   .superRefine((env, ctx) => {
     // OAuth: half a pair is always a misconfiguration.

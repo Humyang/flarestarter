@@ -29,6 +29,7 @@ import { Route as AdminSponsorsDotcsvRouteImport } from './routes/admin/sponsors
 import { Route as Char123LocaleChar125AdminRouteRouteImport } from './routes/{-$locale}/admin/route'
 import { Route as Char123LocaleChar125AppIndexRouteImport } from './routes/{-$locale}/app/index'
 import { Route as Char123LocaleChar125AdminIndexRouteImport } from './routes/{-$locale}/admin/index'
+import { Route as Char123LocaleChar125AppRenderRouteImport } from './routes/{-$locale}/app/render'
 import { Route as Char123LocaleChar125AppProRouteImport } from './routes/{-$locale}/app/pro'
 import { Route as Char123LocaleChar125AppFeedbackRouteImport } from './routes/{-$locale}/app/feedback'
 import { Route as Char123LocaleChar125AppAccountRouteImport } from './routes/{-$locale}/app/account'
@@ -42,6 +43,9 @@ import { Route as Char123LocaleChar125authRegisterRouteImport } from './routes/{
 import { Route as Char123LocaleChar125authLoginRouteImport } from './routes/{-$locale}/(auth)/login'
 import { Route as Char123LocaleChar125authForgotPasswordRouteImport } from './routes/{-$locale}/(auth)/forgot-password'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks/stripe'
+import { Route as ApiRenderOutputsSplatRouteImport } from './routes/api/render-outputs/$'
+import { Route as ApiRenderAssetsSplatRouteImport } from './routes/api/render-assets/$'
+import { Route as ApiRenderAgentSplatRouteImport } from './routes/api/render-agent/$'
 import { Route as ApiAvatarsSplatRouteImport } from './routes/api/avatars/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -156,6 +160,12 @@ const Char123LocaleChar125AdminIndexRoute =
     path: '/',
     getParentRoute: () => Char123LocaleChar125AdminRouteRoute,
   } as any)
+const Char123LocaleChar125AppRenderRoute =
+  Char123LocaleChar125AppRenderRouteImport.update({
+    id: '/app/render',
+    path: '/app/render',
+    getParentRoute: () => Char123LocaleChar125RouteRoute,
+  } as any)
 const Char123LocaleChar125AppProRoute =
   Char123LocaleChar125AppProRouteImport.update({
     id: '/app/pro',
@@ -233,6 +243,21 @@ const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
   path: '/api/webhooks/stripe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRenderOutputsSplatRoute = ApiRenderOutputsSplatRouteImport.update({
+  id: '/api/render-outputs/$',
+  path: '/api/render-outputs/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRenderAssetsSplatRoute = ApiRenderAssetsSplatRouteImport.update({
+  id: '/api/render-assets/$',
+  path: '/api/render-assets/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRenderAgentSplatRoute = ApiRenderAgentSplatRouteImport.update({
+  id: '/api/render-agent/$',
+  path: '/api/render-agent/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAvatarsSplatRoute = ApiAvatarsSplatRouteImport.update({
   id: '/api/avatars/$',
   path: '/api/avatars/$',
@@ -265,6 +290,9 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatars/$': typeof ApiAvatarsSplatRoute
+  '/api/render-agent/$': typeof ApiRenderAgentSplatRoute
+  '/api/render-assets/$': typeof ApiRenderAssetsSplatRoute
+  '/api/render-outputs/$': typeof ApiRenderOutputsSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/{-$locale}/forgot-password': typeof Char123LocaleChar125authForgotPasswordRoute
   '/{-$locale}/login': typeof Char123LocaleChar125authLoginRoute
@@ -278,6 +306,7 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/app/account': typeof Char123LocaleChar125AppAccountRoute
   '/{-$locale}/app/feedback': typeof Char123LocaleChar125AppFeedbackRoute
   '/{-$locale}/app/pro': typeof Char123LocaleChar125AppProRoute
+  '/{-$locale}/app/render': typeof Char123LocaleChar125AppRenderRoute
   '/{-$locale}/admin/': typeof Char123LocaleChar125AdminIndexRoute
   '/{-$locale}/app/': typeof Char123LocaleChar125AppIndexRoute
 }
@@ -300,6 +329,9 @@ export interface FileRoutesByTo {
   '/{-$locale}': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatars/$': typeof ApiAvatarsSplatRoute
+  '/api/render-agent/$': typeof ApiRenderAgentSplatRoute
+  '/api/render-assets/$': typeof ApiRenderAssetsSplatRoute
+  '/api/render-outputs/$': typeof ApiRenderOutputsSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/{-$locale}/forgot-password': typeof Char123LocaleChar125authForgotPasswordRoute
   '/{-$locale}/login': typeof Char123LocaleChar125authLoginRoute
@@ -313,6 +345,7 @@ export interface FileRoutesByTo {
   '/{-$locale}/app/account': typeof Char123LocaleChar125AppAccountRoute
   '/{-$locale}/app/feedback': typeof Char123LocaleChar125AppFeedbackRoute
   '/{-$locale}/app/pro': typeof Char123LocaleChar125AppProRoute
+  '/{-$locale}/app/render': typeof Char123LocaleChar125AppRenderRoute
   '/{-$locale}/admin': typeof Char123LocaleChar125AdminIndexRoute
   '/{-$locale}/app': typeof Char123LocaleChar125AppIndexRoute
 }
@@ -338,6 +371,9 @@ export interface FileRoutesById {
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatars/$': typeof ApiAvatarsSplatRoute
+  '/api/render-agent/$': typeof ApiRenderAgentSplatRoute
+  '/api/render-assets/$': typeof ApiRenderAssetsSplatRoute
+  '/api/render-outputs/$': typeof ApiRenderOutputsSplatRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/{-$locale}/(auth)/forgot-password': typeof Char123LocaleChar125authForgotPasswordRoute
   '/{-$locale}/(auth)/login': typeof Char123LocaleChar125authLoginRoute
@@ -351,6 +387,7 @@ export interface FileRoutesById {
   '/{-$locale}/app/account': typeof Char123LocaleChar125AppAccountRoute
   '/{-$locale}/app/feedback': typeof Char123LocaleChar125AppFeedbackRoute
   '/{-$locale}/app/pro': typeof Char123LocaleChar125AppProRoute
+  '/{-$locale}/app/render': typeof Char123LocaleChar125AppRenderRoute
   '/{-$locale}/admin/': typeof Char123LocaleChar125AdminIndexRoute
   '/{-$locale}/app/': typeof Char123LocaleChar125AppIndexRoute
 }
@@ -377,6 +414,9 @@ export interface FileRouteTypes {
     | '/{-$locale}/'
     | '/api/auth/$'
     | '/api/avatars/$'
+    | '/api/render-agent/$'
+    | '/api/render-assets/$'
+    | '/api/render-outputs/$'
     | '/api/webhooks/stripe'
     | '/{-$locale}/forgot-password'
     | '/{-$locale}/login'
@@ -390,6 +430,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/app/account'
     | '/{-$locale}/app/feedback'
     | '/{-$locale}/app/pro'
+    | '/{-$locale}/app/render'
     | '/{-$locale}/admin/'
     | '/{-$locale}/app/'
   fileRoutesByTo: FileRoutesByTo
@@ -412,6 +453,9 @@ export interface FileRouteTypes {
     | '/{-$locale}'
     | '/api/auth/$'
     | '/api/avatars/$'
+    | '/api/render-agent/$'
+    | '/api/render-assets/$'
+    | '/api/render-outputs/$'
     | '/api/webhooks/stripe'
     | '/{-$locale}/forgot-password'
     | '/{-$locale}/login'
@@ -425,6 +469,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/app/account'
     | '/{-$locale}/app/feedback'
     | '/{-$locale}/app/pro'
+    | '/{-$locale}/app/render'
     | '/{-$locale}/admin'
     | '/{-$locale}/app'
   id:
@@ -449,6 +494,9 @@ export interface FileRouteTypes {
     | '/{-$locale}/'
     | '/api/auth/$'
     | '/api/avatars/$'
+    | '/api/render-agent/$'
+    | '/api/render-assets/$'
+    | '/api/render-outputs/$'
     | '/api/webhooks/stripe'
     | '/{-$locale}/(auth)/forgot-password'
     | '/{-$locale}/(auth)/login'
@@ -462,6 +510,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/app/account'
     | '/{-$locale}/app/feedback'
     | '/{-$locale}/app/pro'
+    | '/{-$locale}/app/render'
     | '/{-$locale}/admin/'
     | '/{-$locale}/app/'
   fileRoutesById: FileRoutesById
@@ -479,6 +528,9 @@ export interface RootRouteChildren {
   DocsSplatRoute: typeof DocsSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAvatarsSplatRoute: typeof ApiAvatarsSplatRoute
+  ApiRenderAgentSplatRoute: typeof ApiRenderAgentSplatRoute
+  ApiRenderAssetsSplatRoute: typeof ApiRenderAssetsSplatRoute
+  ApiRenderOutputsSplatRoute: typeof ApiRenderOutputsSplatRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
 }
 
@@ -624,6 +676,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125AdminIndexRouteImport
       parentRoute: typeof Char123LocaleChar125AdminRouteRoute
     }
+    '/{-$locale}/app/render': {
+      id: '/{-$locale}/app/render'
+      path: '/app/render'
+      fullPath: '/{-$locale}/app/render'
+      preLoaderRoute: typeof Char123LocaleChar125AppRenderRouteImport
+      parentRoute: typeof Char123LocaleChar125RouteRoute
+    }
     '/{-$locale}/app/pro': {
       id: '/{-$locale}/app/pro'
       path: '/app/pro'
@@ -715,6 +774,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksStripeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/render-outputs/$': {
+      id: '/api/render-outputs/$'
+      path: '/api/render-outputs/$'
+      fullPath: '/api/render-outputs/$'
+      preLoaderRoute: typeof ApiRenderOutputsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/render-assets/$': {
+      id: '/api/render-assets/$'
+      path: '/api/render-assets/$'
+      fullPath: '/api/render-assets/$'
+      preLoaderRoute: typeof ApiRenderAssetsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/render-agent/$': {
+      id: '/api/render-agent/$'
+      path: '/api/render-agent/$'
+      fullPath: '/api/render-agent/$'
+      preLoaderRoute: typeof ApiRenderAgentSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/avatars/$': {
       id: '/api/avatars/$'
       path: '/api/avatars/$'
@@ -774,6 +854,7 @@ interface Char123LocaleChar125RouteRouteChildren {
   Char123LocaleChar125AppAccountRoute: typeof Char123LocaleChar125AppAccountRoute
   Char123LocaleChar125AppFeedbackRoute: typeof Char123LocaleChar125AppFeedbackRoute
   Char123LocaleChar125AppProRoute: typeof Char123LocaleChar125AppProRoute
+  Char123LocaleChar125AppRenderRoute: typeof Char123LocaleChar125AppRenderRoute
   Char123LocaleChar125AppIndexRoute: typeof Char123LocaleChar125AppIndexRoute
 }
 
@@ -800,6 +881,7 @@ const Char123LocaleChar125RouteRouteChildren: Char123LocaleChar125RouteRouteChil
     Char123LocaleChar125AppAccountRoute: Char123LocaleChar125AppAccountRoute,
     Char123LocaleChar125AppFeedbackRoute: Char123LocaleChar125AppFeedbackRoute,
     Char123LocaleChar125AppProRoute: Char123LocaleChar125AppProRoute,
+    Char123LocaleChar125AppRenderRoute: Char123LocaleChar125AppRenderRoute,
     Char123LocaleChar125AppIndexRoute: Char123LocaleChar125AppIndexRoute,
   }
 
@@ -821,6 +903,9 @@ const rootRouteChildren: RootRouteChildren = {
   DocsSplatRoute: DocsSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAvatarsSplatRoute: ApiAvatarsSplatRoute,
+  ApiRenderAgentSplatRoute: ApiRenderAgentSplatRoute,
+  ApiRenderAssetsSplatRoute: ApiRenderAssetsSplatRoute,
+  ApiRenderOutputsSplatRoute: ApiRenderOutputsSplatRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
 }
 export const routeTree = rootRouteImport

@@ -69,6 +69,17 @@ export const en = {
     noFile: 'No file selected.',
     failed: 'Upload failed — please try again.',
   },
+  renderJobs: {
+    nav: 'Smart Clip', title: 'Create a video', subtitle: 'Upload an MP4 and let Smart Clip edit, subtitle, and render the finished video.',
+    titleLabel: 'Project title', fileLabel: 'Source video', fileHint: 'MP4 only, up to 100 MB.',
+    submit: 'Submit render', uploading: 'Uploading…', submitted: 'Render task submitted.', mine: 'Your renders', empty: 'No renders yet.',
+    download: 'Download',
+    status: { submitting: 'Submitting', queued: 'Queued', running: 'Rendering', completed: 'Completed', failed: 'Failed' },
+    errors: {
+      noFile: 'Choose an MP4 file.', empty: 'The video is empty.', type: 'Only MP4 videos are supported.',
+      size: 'The video is larger than 100 MB.', title: 'Enter a project title.', smartClip: 'The local Smart Clip service is unavailable.', unknown: 'Could not submit the render task.',
+    },
+  },
   legal: {
     termsTitle: 'Terms of Service',
     privacyTitle: 'Privacy Policy',

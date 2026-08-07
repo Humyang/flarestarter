@@ -35,3 +35,8 @@ TURNSTILE_SECRET_KEY=
 CF_ANALYTICS_TOKEN=
 # Sentry server-side error reporting. Blank = off. DSN is in the Sentry project settings.
 SENTRY_DSN=
+# Local-only Smart Clip API. It creates a normal clip_task and is never exposed to browsers.
+SMART_CLIP_API_URL=http://127.0.0.1:7706/v1/ai-cut
+# Production bridge. Store this as a Worker secret and use the same value on the local agent.
+# Local development keeps using SMART_CLIP_API_URL directly, so this may stay blank locally.
+AGENT_SHARED_SECRET=

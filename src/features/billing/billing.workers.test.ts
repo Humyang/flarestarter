@@ -15,7 +15,7 @@ import { describe, test, expect, beforeAll } from 'vitest'
 import { env } from 'cloudflare:test'
 import { eq } from 'drizzle-orm'
 import { createDb, type DB } from '@/db/client'
-import { subscription, processedWebhookEvents } from './billing.schema'
+import { subscription, processedWebhookEvents, refundedPurchases } from './billing.schema'
 import { handleWebhook, applyDomainEvent, getEntitlementFor, cancelSubscriptionsForUser, startCheckout } from './billing.server'
 import type { PaymentProvider } from './payment'
 import type { DomainEvent } from './entitlement'
@@ -472,6 +472,54 @@ describe('7. Lifetime purchase', () => {
     await applyDomainEvent(db, { type: 'purchase.completed', eventId: 'e_pi', customerId, priceId: 'price_life', paymentIntentId: 'pi_life_stored' }, Date.now())
     const [row] = await db.select().from(subscription).where(eq(subscription.customerId, customerId))
     expect(row.lifetimePaymentIntentId).toBe('pi_life_stored')
+  })
+
+  test('refund arriving before checkout completion prevents a late lifetime grant', async () => {
+    const db = createDb(env.DB)
+    const userId = `life-ref-first-${crypto.randomUUID()}`
+    const customerId = `cus_ref_first_${crypto.randomUUID().slice(0, 8)}`
+    const paymentIntentId = `pi_ref_first_${crypto.randomUUID().slice(0, 8)}`
+    await seedUserAndSubscription(db, { userId, customerId, status: 'none', plan: 'free' })
+
+    await applyDomainEvent(db, {
+      type: 'purchase.refunded',
+      eventId: 'evt_refund_first',
+      customerId,
+      paymentIntentId,
+    }, Date.now())
+    await applyDomainEvent(db, {
+      type: 'purchase.completed',
+      eventId: 'evt_completion_late',
+      customerId,
+      priceId: 'price_life',
+      paymentIntentId,
+    }, Date.now() + 1)
+
+    const ent = await getEntitlementFor(db, userId)
+    expect(ent.plan).toBe('free')
+    const tombstones = await db
+      .select()
+      .from(refundedPurchases)
+      .where(eq(refundedPurchases.paymentIntentId, paymentIntentId))
+    expect(tombstones).toHaveLength(1)
+  })
+
+  test('refund tombstone is recorded even when the Stripe customer is not mapped yet', async () => {
+    const db = createDb(env.DB)
+    const paymentIntentId = `pi_unmapped_${crypto.randomUUID().slice(0, 8)}`
+
+    await applyDomainEvent(db, {
+      type: 'purchase.refunded',
+      eventId: 'evt_unmapped_refund',
+      customerId: 'cus_not_mapped',
+      paymentIntentId,
+    }, Date.now())
+
+    const tombstones = await db
+      .select()
+      .from(refundedPurchases)
+      .where(eq(refundedPurchases.paymentIntentId, paymentIntentId))
+    expect(tombstones).toHaveLength(1)
   })
 
   test('refunding an UNRELATED charge of the same customer does not strip lifetime', async () => {

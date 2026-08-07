@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import type { DB } from '@/db/client'
-import { subscription, processedWebhookEvents } from './billing.schema'
+import { subscription, processedWebhookEvents, refundedPurchases } from './billing.schema'
 import { resolveEntitlement, isActivePro, type DomainEvent, type Entitlement, type BillingTransition } from './entitlement'
 import { scopeFromUser, ownedBy } from '@/db/scope'
 import type { PaymentProvider } from './payment'
@@ -22,6 +22,19 @@ export async function applyDomainEvent(
   cancelSubscription?: (subscriptionId: string) => Promise<void>,
 ): Promise<BillingTransition | null> {
   if (event.type === 'ignored') return null
+
+  // Record the refund before resolving the customer. A refund may arrive while
+  // checkout.completed is still retrying; the tombstone makes that late grant
+  // a no-op even when no subscription row can be resolved at refund time.
+  if (event.type === 'purchase.refunded' && event.paymentIntentId) {
+    await db.insert(refundedPurchases).values({
+      paymentIntentId: event.paymentIntentId,
+      customerId: event.customerId,
+      refundEventId: event.eventId,
+      refundedAt: new Date(now),
+    }).onConflictDoNothing({ target: refundedPurchases.paymentIntentId })
+  }
+
   const rows = await db.select().from(subscription).where(eq(subscription.customerId, event.customerId))
   const row = rows[0]
   if (!row) return null // 无映射的 customer → 忽略
@@ -48,6 +61,13 @@ export async function applyDomainEvent(
   if (occurredAt != null && row.lastEventAt != null && occurredAt < row.lastEventAt) return null
 
   if (event.type === 'purchase.completed') {
+    if (event.paymentIntentId) {
+      const refunded = await db
+        .select({ paymentIntentId: refundedPurchases.paymentIntentId })
+        .from(refundedPurchases)
+        .where(eq(refundedPurchases.paymentIntentId, event.paymentIntentId))
+      if (refunded.length) return null
+    }
     if (row.subscriptionId && cancelSubscription) await cancelSubscription(row.subscriptionId)
     await db.update(subscription).set({
       lifetime: true, plan: 'pro', status: 'active', subscriptionId: null,
@@ -58,8 +78,6 @@ export async function applyDomainEvent(
     return wasPro ? null : { kind: 'activated', userId: row.userId, via: 'lifetime' }
   }
   if (event.type === 'purchase.refunded') {
-    // 已知限制：若退款事件先于授予事件到达（completed 首投失败重试期间管理员退款），此处
-    // 无行可撤、被静默跳过，迟到的授予随后照常生效——闭合它需要一张退款台账，模板不引入。
     if (!row.lifetime) return null // 订阅退款不在此处理
     // 只有退的是买断那笔付款才撤授权——同客户其他 charge（如历史月费）的退款与终身授权无关。
     // 任一侧 PI 缺失（老数据/老事件）时保守回退到按客户匹配。
