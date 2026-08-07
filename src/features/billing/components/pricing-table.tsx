@@ -1,13 +1,10 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Check, Bell, Github, Heart } from 'lucide-react'
+import { Check, Bell, Heart } from 'lucide-react'
 import { useTranslation } from '@/features/i18n/provider'
 import { buttonVariants } from '@/components/ui/button'
 import { WaitlistDialog } from '@/features/waitlist/components/waitlist-dialog'
 import type { Locale } from '@/features/i18n/locale'
-
-// Set this to your real repository URL before publishing.
-const GITHUB_URL = 'https://github.com/flarestarter/flarestarter'
 
 interface Content {
   kicker: string
@@ -35,82 +32,74 @@ interface Content {
   proFeats: string[]
 }
 
-/* Pricing copy lives here (not in the shared i18n dictionary) because the
- * feature lists are arrays, which the Dict string type can't express.
- * This is a marketing surface, but every claim matches what
- * this repo actually ships: the open-source core is a complete app (auth +
- * Stripe billing + admin all included). Pro (a one-time lifetime license adding
- * updates and priority support) is ANNOUNCED but not purchasable yet — the CTA
- * joins the waitlist (source="pricing") instead of opening a checkout, and the
- * card is labeled "coming soon" with planned pricing. When Pro actually ships,
- * swap the CTA to the checkout server fn and drop the coming-soon copy. */
+/* Pricing copy lives here because the feature lists are arrays. Keep the page
+ * honest while the free beta is controlled and paid tiers are being validated. */
 const CONTENT: Record<Locale, Content> = {
   en: {
     kicker: '// pricing',
-    title: 'Open source core. Pro once, forever.',
+    title: 'A simple start for a serious publishing habit.',
     subtitle:
-      'Clone the complete Apache 2.0 core today — it ships a real app. Pro is on the way: pay once, stay current for life, and get answers straight from the maintainers. Join the waitlist to be first in line.',
-    lifetimeNote: 'One-time purchase · no subscription, ever',
+      'Start with the controlled free beta. Upgrade when you need more room for projects, exports and team review.',
+    lifetimeNote: 'Free while we validate the workflow',
     personal: 'Personal',
     team: 'Team',
-    freeName: 'Open source',
+    freeName: 'Free beta',
     proName: 'Pro',
     comingSoon: 'Coming soon',
-    freeDesc: 'The complete Apache 2.0 template. Yours to clone.',
-    proDesc: 'Pay once. Stay current for life, with the maintainers one message away.',
-    once: 'once',
-    freeNote: 'Apache 2.0 licensed · no card required',
-    proNote: 'Planned pricing · 1 developer · all future updates',
-    proTeamNote: 'Planned pricing · up to 4 developers · all future updates',
-    ctaFree: 'Clone on GitHub',
+    freeDesc: 'Everything needed to turn one source video into a publishable clip batch.',
+    proDesc: 'More projects, faster review and priority support for a growing publishing team.',
+    once: 'planned',
+    freeNote: 'No card required · controlled access',
+    proNote: 'Planned pricing · individual creator',
+    proTeamNote: 'Planned pricing · small publishing team',
+    ctaFree: 'Start creating',
     ctaPro: 'Join the waitlist',
-    bandKicker: '// real talk',
-    bandTitle: 'The open core might be all you need.',
-    bandSub: 'If it saves you a weekend, consider sponsoring — an early-sponsor discount will be waiting when Pro lands.',
-    bandSponsor: 'Sponsor the project',
+    bandKicker: '// made for momentum',
+    bandTitle: 'The free workflow should feel useful first.',
+    bandSub: 'Try the full review loop, tell us what slows you down, and help shape what comes next.',
+    bandSponsor: 'Support the team',
     freeFeats: [
-      'Complete Apache 2.0 template',
-      'Cloudflare Workers deploy',
-      'Auth + Stripe billing + admin',
-      'D1 · KV · dark mode · i18n',
+      'Source video upload',
+      'AI highlight suggestions',
+      'Captions and 9:16 framing',
+      'Private project storage',
       'Community support',
     ],
     proFeats: [
-      'Everything in the open core',
-      'Lifetime updates — all future modules included',
-      'Priority support, straight from the maintainers',
-      'Premium modules, exclusive to Pro',
+      'Everything in the free beta',
+      'Higher project and export limits',
+      'Priority review support',
+      'Team handoff and shared queues',
     ],
   },
   zh: {
     kicker: '// pricing',
-    title: '开源核心，Pro 一次买断、终身可用',
-    subtitle:
-      '今天即可克隆完整的 Apache 2.0 核心——它本身就是个可用的应用。Pro 正在路上：一次付费，底座终身保持最新，遇到问题维护者直接答。加入等待列表，上线第一时间通知你。',
-    lifetimeNote: '一次性买断 · 永不订阅',
+    title: '从一条视频开始，建立稳定的发布习惯',
+    subtitle: '先体验受控免费 Beta。需要更多项目、成片和团队审核空间时，再升级到 Pro。',
+    lifetimeNote: '工作流验证期间免费使用',
     personal: '个人',
     team: '团队',
-    freeName: '开源版',
+    freeName: '免费 Beta',
     proName: 'Pro',
     comingSoon: '即将推出',
-    freeDesc: '完整的 Apache 2.0 模板，克隆即用',
-    proDesc: '一次付费，终身保持最新；卡住时，维护者直接答。',
-    once: '买断',
-    freeNote: 'Apache 2.0 许可 · 无需信用卡',
-    proNote: '规划定价 · 1 名开发者 · 含所有后续更新',
-    proTeamNote: '规划定价 · 最多 4 名开发者 · 含所有后续更新',
-    ctaFree: '在 GitHub 克隆',
+    freeDesc: '从一条源视频开始，生成可以审核和发布的片段队列。',
+    proDesc: '给持续发布的创作者和团队更多项目、成片与支持空间。',
+    once: '规划中',
+    freeNote: '无需信用卡 · 受控开放',
+    proNote: '规划定价 · 个人创作者',
+    proTeamNote: '规划定价 · 小型发布团队',
+    ctaFree: '开始创作',
     ctaPro: '加入等待列表',
-    bandKicker: '// 说句实话',
-    bandTitle: '开源版，可能就够你用了。',
-    bandSub: '如果它帮你省了不少时间，欢迎赞助支持——Pro 上线时，早期赞助者有专属折扣。',
-    bandSponsor: '赞助这个项目',
-    freeFeats: ['完整 Apache 2.0 模板', 'Cloudflare Workers 部署', '认证 + Stripe 计费 + 后台', 'D1 · KV · 暗色 · 国际化', '社区支持'],
+    bandKicker: '// 为持续发布而做',
+    bandTitle: '先让免费工作流真正有用。',
+    bandSub: '完整走一遍审核链路，告诉我们哪里拖慢了你，一起决定下一步。',
+    bandSponsor: '支持团队',
+    freeFeats: ['源视频上传', 'AI 精选片段建议', '字幕与 9:16 画幅', '私有项目存储', '社区支持'],
     proFeats: [
-      '开源核心的全部',
-      '终身更新，含未来所有模块',
-      '优先支持，维护者亲自解答',
-      '更多高级模块，Pro 专属',
+      '免费 Beta 的全部能力',
+      '更高项目与成片额度',
+      '优先审核支持',
+      '团队协作与共享队列',
     ],
   },
 }
@@ -160,9 +149,9 @@ function PriceCard({
             <Bell size={16} /> {c.ctaPro}
           </button>
         ) : (
-          <a href={GITHUB_URL} className={buttonVariants({ variant: 'outline', className: 'w-full' })}>
-            <Github size={15} /> {c.ctaFree}
-          </a>
+          <Link to="/{-$locale}/register" className={buttonVariants({ variant: 'outline', className: 'w-full' })}>
+            {c.ctaFree}
+          </Link>
         )}
         <div className="my-5 h-px bg-border" />
         <div className="grid gap-2.5">
@@ -243,9 +232,9 @@ export function PricingTable({ turnstileSiteKey }: { turnstileSiteKey: string | 
         </h2>
         <p className="mx-auto mb-7 max-w-[36em] text-[15px] leading-snug text-fg-2">{c.bandSub}</p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <a href={GITHUB_URL} className={buttonVariants({})}>
-            <Github size={15} /> {c.ctaFree}
-          </a>
+          <Link to="/{-$locale}/register" className={buttonVariants({})}>
+            {c.ctaFree}
+          </Link>
           <Link to="/{-$locale}/sponsor" className={buttonVariants({ variant: 'outline' })}>
             <Heart size={15} /> {c.bandSponsor}
           </Link>

@@ -25,11 +25,11 @@ export const Route = createFileRoute('/{-$locale}/pricing')({
       origin,
       locale,
       path: '/pricing',
-      title: locale === 'zh' ? '定价 — FlareStarter' : 'Pricing — FlareStarter',
+      title: locale === 'zh' ? '版本 — Smart Clip' : 'Plans — Smart Clip',
       description:
         locale === 'zh'
-          ? '开源核心（Apache 2.0）。Pro 一次买断、终身可用，即将推出。'
-          : 'Open source core (Apache 2.0). Pro — a one-time lifetime license — is coming soon.',
+          ? 'Smart Clip 免费版正在受控开放。Pro 将为持续发布的创作者提供更多项目、成片和团队审核空间。'
+          : 'Smart Clip is in controlled free beta. Pro will add more projects, exports, and team review space.',
     })
     return { meta, links }
   },

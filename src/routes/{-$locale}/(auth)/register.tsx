@@ -30,6 +30,7 @@ function Register() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -68,9 +69,24 @@ function Register() {
         <Field id="password" label={t('auth.password')} icon={Lock} canToggle value={password}
           onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password"
           hint={t('auth.pwHint')} />
+        <label className="flex items-start gap-2 text-[13px] leading-relaxed text-fg-2">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-primary"
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            required
+          />
+          <span>
+            {t('auth.agreePrefix')}{' '}
+            <Link to="/{-$locale}/terms" target="_blank" className="font-semibold text-primary">{t('auth.agreeTerms')}</Link>{' '}
+            {t('auth.agreeAnd')}{' '}
+            <Link to="/{-$locale}/privacy" target="_blank" className="font-semibold text-primary">{t('auth.agreePrivacy')}</Link>.
+          </span>
+        </label>
         {widget}
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" size="lg" className="w-full" disabled={busy || (enabled && !token)}>
+        <Button type="submit" size="lg" className="w-full" disabled={busy || !termsAccepted || (enabled && !token)}>
           {t('auth.register')}
         </Button>
       </form>

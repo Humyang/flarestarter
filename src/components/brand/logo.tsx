@@ -1,4 +1,4 @@
-/** FlareStarter wordmark — 4-point spark mark + "Flare" (bold) + "Starter" (58%). `compact` renders the mark only. */
+/** Smart Clip wordmark. `compact` renders the mark only. */
 export function Logo({ size = 18, compact = false }: { size?: number; compact?: boolean }) {
   return (
     <span
@@ -20,7 +20,7 @@ export function Logo({ size = 18, compact = false }: { size?: number; compact?: 
       </span>
       {!compact && (
         <span>
-          Flare<span className="font-medium opacity-[0.58]">Starter</span>
+          Smart<span className="font-medium text-primary"> Clip</span>
         </span>
       )}
     </span>

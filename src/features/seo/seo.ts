@@ -1,6 +1,6 @@
 import { locales, defaultLocale, localizePath, type Locale } from '@/features/i18n/locale'
 
-const PUBLIC_PATHS = ['/', '/pricing', '/changelog', '/sponsor', '/waitlist'] as const
+const PUBLIC_PATHS = ['/', '/pricing', '/changelog', '/sponsor', '/waitlist', '/status'] as const
 
 // Open Graph 要求 language_TERRITORY 形态（en_US），裸语言码会被严格解析器忽略。
 const OG_LOCALE: Record<Locale, string> = { en: 'en_US', zh: 'zh_CN' }

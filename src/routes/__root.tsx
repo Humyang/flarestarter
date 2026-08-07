@@ -12,10 +12,10 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'FlareStarter — Cloudflare-native SaaS starter' },
-      { name: 'description', content: 'The open-source, Cloudflare-native SaaS starter. Clone it and ship on Workers.' },
-      { property: 'og:title', content: 'FlareStarter' },
-      { property: 'og:description', content: 'The open-source, Cloudflare-native SaaS starter. Clone it and ship on Workers.' },
+      { title: 'Smart Clip — AI video repurposing' },
+      { name: 'description', content: 'Turn long videos into ready-to-review short clips with Smart Clip.' },
+      { property: 'og:title', content: 'Smart Clip' },
+      { property: 'og:description', content: 'AI video repurposing with a human finish.' },
       { property: 'og:type', content: 'website' },
     ],
     links: [

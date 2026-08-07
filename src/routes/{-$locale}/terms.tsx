@@ -16,5 +16,5 @@ function Terms() {
   const { loggedIn } = Route.useLoaderData()
   const { theme } = rootRoute.useLoaderData()
   const { t } = useTranslation()
-  return <LegalPage theme={theme} loggedIn={loggedIn} title={t('legal.termsTitle')} />
+  return <LegalPage theme={theme} loggedIn={loggedIn} title={t('legal.termsTitle')} kind="terms" />
 }

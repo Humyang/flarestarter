@@ -4,7 +4,6 @@ import { Logo } from '@/components/brand/logo'
 import { ThemeToggle } from '@/features/theme/theme-toggle'
 import { LangSwitch } from '@/features/i18n/lang-switch'
 
-const GITHUB_URL = 'https://github.com/flarestarter/flarestarter'
 const TELEGRAM_URL = 'https://t.me/+coaN5Ihjte9jNzZl'
 const X_URL = 'https://x.com/0xdinglv'
 const XHS_URL = 'https://xhslink.com/m/19FI1djnItu'
@@ -30,13 +29,14 @@ export function Footer({ theme }: { theme: 'light' | 'dark' }) {
           <Link className="foot-link" to="/{-$locale}/pricing">{t('marketing.footerPricing')}</Link>
           <Link className="foot-link" to="/{-$locale}/waitlist">{t('marketing.footerWaitlist')}</Link>
           <Link className="foot-link" to="/{-$locale}/changelog">{t('marketing.footerChangelog')}</Link>
+          <Link className="foot-link" to="/{-$locale}/status">{t('marketing.footerStatus')}</Link>
           <Link className="foot-link" to="/{-$locale}/sponsor">{t('sponsor.footerSponsor')}</Link>
-          <a className="foot-link" href="/docs">{t('marketing.footerDocs')}</a>
+          <Link className="foot-link" to="/{-$locale}/app/feedback">{t('marketing.footerDocs')}</Link>
         </FooterCol>
 
         {/* Resources */}
         <FooterCol title={t('marketing.footerResources')}>
-          <a className="foot-link" href={GITHUB_URL}>{t('marketing.footerGithub')}</a>
+          <Link className="foot-link" to="/{-$locale}/status">{t('marketing.footerGithub')}</Link>
           <a className="foot-link" href={TELEGRAM_URL} target="_blank" rel="noreferrer">{t('marketing.footerTelegram')}</a>
           <a className="foot-link" href={X_URL} target="_blank" rel="noreferrer">{t('marketing.footerX')}</a>
           <a className="foot-link" href={XHS_URL} target="_blank" rel="noreferrer">{t('marketing.footerXhs')}</a>
@@ -46,7 +46,7 @@ export function Footer({ theme }: { theme: 'light' | 'dark' }) {
         <FooterCol title={t('marketing.footerLegal')}>
           <Link className="foot-link" to="/{-$locale}/terms">{t('marketing.footerTerms')}</Link>
           <Link className="foot-link" to="/{-$locale}/privacy">{t('marketing.footerPrivacy')}</Link>
-          <a className="foot-link" href={`${GITHUB_URL}/blob/main/LICENSE`}>{t('marketing.footerLicense')}</a>
+          <span className="foot-link">{t('marketing.footerLicense')}</span>
         </FooterCol>
       </div>
 

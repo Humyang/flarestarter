@@ -16,5 +16,5 @@ function Privacy() {
   const { loggedIn } = Route.useLoaderData()
   const { theme } = rootRoute.useLoaderData()
   const { t } = useTranslation()
-  return <LegalPage theme={theme} loggedIn={loggedIn} title={t('legal.privacyTitle')} />
+  return <LegalPage theme={theme} loggedIn={loggedIn} title={t('legal.privacyTitle')} kind="privacy" />
 }

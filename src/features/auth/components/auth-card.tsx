@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 
 const rootRoute = getRouteApi('__root__')
 
-/** Edge-Terminal auth shell: dotted-grid backdrop, logo-is-home header
+/** Smart Clip auth shell: dotted-grid backdrop, logo-is-home header
  *  (a back-chevron slides in on hover/focus), centered terminal card. */
 export function AuthCard({
   title,
@@ -25,7 +25,7 @@ export function AuthCard({
   return (
     <div className="auth-wrap grid-bg">
       <div className="flex h-16 items-center gap-3 border-b border-border px-4 md:px-7">
-        <Link to="/{-$locale}" className="auth-home" aria-label="FlareStarter">
+          <Link to="/{-$locale}" className="auth-home" aria-label="Smart Clip">
           <span className="auth-back" aria-hidden="true">
             <ChevronLeft size={16} />
           </span>
