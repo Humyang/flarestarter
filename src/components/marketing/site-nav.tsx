@@ -8,42 +8,19 @@ import { LangSwitch } from '@/features/i18n/lang-switch'
 import { useTranslation } from '@/features/i18n/provider'
 
 /** Sticky Smart Clip header. Links + CTA collapse into a hamburger menu on mobile. */
-export function SiteNav({ theme, loggedIn }: { theme: 'light' | 'dark'; loggedIn: boolean }) {
+export function SiteNav({ theme }: { theme: 'light' | 'dark'; loggedIn?: boolean }) {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
 
   const navLinks = (
     <>
-      <Link to="/{-$locale}" hash="features" className="rounded-md px-2 py-3 text-sm font-medium text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:py-2">
+      <Link to="/{-$locale}" hash="render-workflow" className="rounded-md px-2 py-3 text-sm font-medium text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:py-2">
         {t('marketing.navFeatures')}
-      </Link>
-      <Link to="/{-$locale}/pricing" className="rounded-md px-2 py-3 text-sm font-medium text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:py-2">
-        {t('marketing.navPricing')}
-      </Link>
-      <Link to="/{-$locale}/changelog" className="rounded-md px-2 py-3 text-sm font-medium text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:py-2">
-        {t('marketing.navChangelog')}
-      </Link>
-      <Link to="/{-$locale}/status" className="rounded-md px-2 py-3 text-sm font-medium text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:py-2">
-        {t('marketing.navStatus')}
-      </Link>
-      <Link to="/{-$locale}/sponsor" className="rounded-md px-2 py-3 text-sm font-medium text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:py-2">
-        {t('sponsor.navSponsor')}
-      </Link>
-      <Link to="/{-$locale}/app/feedback" className="rounded-md px-2 py-3 text-sm font-medium text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:py-2">
-        {t('marketing.navDocs')}
       </Link>
     </>
   )
 
-  const cta = loggedIn ? (
-    <Link to="/{-$locale}/app" className={buttonVariants({ size: 'sm' })}>
-      {t('marketing.heroCtaPrimary')}
-    </Link>
-  ) : (
-    <Link to="/{-$locale}/register" className={buttonVariants({ size: 'sm' })}>
-      {t('marketing.heroCtaPrimary')}
-    </Link>
-  )
+  const cta = <Link to="/{-$locale}/app/render" className={buttonVariants({ size: 'sm' })}>{t('marketing.heroCtaPrimary')}</Link>
 
   return (
     <header

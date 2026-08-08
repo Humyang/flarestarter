@@ -5,6 +5,7 @@ import type { Locale } from '@/features/i18n/locale'
 import { SiteNav } from '@/components/marketing/site-nav'
 import { Hero } from '@/components/marketing/hero'
 import { TechStrip } from '@/components/marketing/tech-strip'
+import { ComparisonSection } from '@/components/marketing/comparison-section'
 import { Features } from '@/components/marketing/features'
 import { FeatureGrid } from '@/components/marketing/feature-grid'
 import { AgentSection } from '@/components/marketing/agent-section'
@@ -36,16 +37,16 @@ export const Route = createFileRoute('/{-$locale}/')({
 function Home() {
   const { theme, user } = rootRoute.useLoaderData()
   const loggedIn = !!user
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SiteNav theme={theme} loggedIn={loggedIn} />
-      <Hero loggedIn={loggedIn} />
+      <Hero />
       <TechStrip />
+      <ComparisonSection />
       <Features />
       <FeatureGrid />
       <AgentSection />
-      <CTA loggedIn={loggedIn} />
+      <CTA />
       <Footer theme={theme} />
     </div>
   )

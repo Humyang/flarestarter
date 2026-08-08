@@ -20,22 +20,19 @@ test('robots disallows app/admin/api + lists sitemap', () => {
   expect(r).toContain(`Sitemap: ${origin}/sitemap.xml`)
 })
 
-test('sitemap lists both locales of public pages with hreflang', () => {
+test('sitemap lists both locales of the customer homepage with hreflang', () => {
   const xml = buildSitemap(origin)
   expect(xml).toContain('<urlset')
   expect(xml).toContain(`<loc>${origin}/</loc>`)
   expect(xml).toContain(`<loc>${origin}/zh</loc>`)
-  expect(xml).toContain(`<loc>${origin}/pricing</loc>`)
-  expect(xml).toContain(`<loc>${origin}/zh/pricing</loc>`)
-  expect(xml).toContain(`<loc>${origin}/waitlist</loc>`)
-  expect(xml).toContain(`<loc>${origin}/zh/waitlist</loc>`)
   expect(xml).toContain('hreflang="en"')
   expect(xml).toContain('hreflang="zh"')
   expect(xml).toContain('hreflang="x-default"')
-  expect(xml).toContain(`<loc>${origin}/changelog</loc>`)
-  expect(xml).toContain(`<loc>${origin}/zh/changelog</loc>`)
-  expect(xml).toContain(`<loc>${origin}/sponsor</loc>`)
-  expect(xml).toContain(`<loc>${origin}/zh/sponsor</loc>`)
+  expect(xml).not.toContain(`${origin}/pricing`)
+  expect(xml).not.toContain(`${origin}/changelog`)
+  expect(xml).not.toContain(`${origin}/sponsor`)
+  expect(xml).not.toContain(`${origin}/waitlist`)
+  expect(xml).not.toContain(`${origin}/status`)
 })
 
 test('sitemap includes single-locale docs paths without hreflang alternates', () => {

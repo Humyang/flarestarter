@@ -11,7 +11,7 @@ export function Features() {
   const { t } = useTranslation()
 
   return (
-    <section id="features" className="scroll-mt-16 border-t border-border px-5 md:px-7 py-12">
+    <section id="render-workflow" className="scroll-mt-16 border-t border-border px-5 py-12 md:px-7">
       <span className="kicker">{t('marketing.featuresKicker')}</span>
       <div className="mt-2.5">
         {FEATURES.map(({ Icon, title, body, metric }) => (

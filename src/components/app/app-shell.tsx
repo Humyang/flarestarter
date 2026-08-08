@@ -152,7 +152,7 @@ export function AppShell({
           <button
             type="button"
             className="inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg text-fg-2 hover:bg-bg-alt hover:text-foreground md:hidden"
-            aria-label="Menu"
+            aria-label={t('app.menu')}
             onClick={() => setOpen(true)}
           >
             <Menu size={20} />

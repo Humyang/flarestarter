@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { Check, CircleCheck, Clock3, Download, Languages, LoaderCircle, RotateCcw, Search, Sparkles, TriangleAlert, Upload } from 'lucide-react'
+import { Check, ChevronDown, CircleCheck, Clock3, Download, FileVideo, Languages, LoaderCircle, RotateCcw, Search, Sparkles, TriangleAlert, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { requireUser } from '@/features/auth/middleware'
 import { getEntitlement } from '@/features/billing/middleware'
@@ -103,14 +103,63 @@ function StatusIcon({ status }: { status: RenderJobStatus }) {
   return <Upload size={18} className="text-fg-2" />
 }
 
+function previewLanguage(locale: 'en' | 'zh', translationLanguage: SubtitleTranslationLanguage) {
+  if (translationLanguage === 'en') return 'en'
+  if (translationLanguage === 'zh' || translationLanguage === 'zh-tw') return 'zh'
+  return locale
+}
+
+function SubtitleAnimationPreview({
+  animationId,
+  translationLanguage,
+  locale,
+  t,
+}: {
+  animationId: SubtitleAnimationId
+  translationLanguage: SubtitleTranslationLanguage
+  locale: 'en' | 'zh'
+  t: Translate
+}) {
+  const language = previewLanguage(locale, translationLanguage)
+  const videoPath = `/subtitle-composition-preview/${language}/${animationId}.webm`
+  return (
+    <div
+      className="subtitle-live-preview"
+      role="img"
+      aria-label={t('renderJobs.preview.aria', { animation: t(`renderJobs.animation.${animationId}`) })}
+    >
+      <video
+        key={`${language}-${animationId}`}
+        src={videoPath}
+        poster={`/subtitle-composition-preview/${language}/${animationId}.jpg`}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        aria-hidden="true"
+        className="subtitle-live-preview__image"
+      />
+      <div className="subtitle-live-preview__topline">
+        <span className="inline-flex items-center gap-1.5"><span className="subtitle-live-preview__dot" />{t('renderJobs.preview.live')}</span>
+        <span>{t('renderJobs.preview.frame')}</span>
+      </div>
+      <div className="subtitle-live-preview__language">{t(`renderJobs.translation.${translationLanguage}`)}</div>
+      <div className="subtitle-live-preview__timeline" aria-hidden="true"><span /></div>
+    </div>
+  )
+}
+
 function RenderJobsPage() {
   const initial = Route.useLoaderData()
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const [jobs, setJobs] = useState(initial.jobs)
   const [title, setTitle] = useState('')
   const [translationLanguage, setTranslationLanguage] = useState<SubtitleTranslationLanguage>('original')
   const [animationId, setAnimationId] = useState<SubtitleAnimationId>(DEFAULT_SUBTITLE_ANIMATION_ID)
   const [animationSearch, setAnimationSearch] = useState('')
+  const [selectedFileName, setSelectedFileName] = useState('')
+  const [animationLibraryOpen, setAnimationLibraryOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -170,55 +219,76 @@ function RenderJobsPage() {
 
   return (
     <AppShell user={initial.user} isPro={initial.ent.plan === 'pro'} active="render" crumb={t('renderJobs.nav')} paymentFailed={initial.ent.paymentFailed}>
-      <div className="mb-6">
+      <div className="mb-6 max-w-6xl">
         <h1 className="page-h">{t('renderJobs.title')}</h1>
         <p className="mt-1.5 text-[14.5px] text-fg-2">{t('renderJobs.subtitle')}</p>
       </div>
 
-      <Card className="max-w-5xl p-5 sm:p-6">
-        <form onSubmit={submit} className="grid gap-4">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-            <div className="grid content-start gap-4">
-              <div className="grid gap-1.5">
+      <Card className="form-surface max-w-6xl overflow-hidden p-0">
+        <form onSubmit={submit} className="grid gap-0">
+          <div className="grid gap-8 p-5 sm:p-7 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-10">
+            <section className="grid min-w-0 content-start gap-5" aria-labelledby="render-source-heading">
+              <div className="form-section-heading">
+                <span className="form-step">01</span>
+                <div>
+                  <h2 id="render-source-heading" className="form-section-title">{t('renderJobs.sourceStep')}</h2>
+                  <p className="form-section-copy">{t('renderJobs.sourceStepHint')}</p>
+                </div>
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="render-title">{t('renderJobs.titleLabel')}</Label>
-                <Input id="render-title" value={title} maxLength={120} required onChange={(e) => setTitle(e.target.value)} />
+                <Input id="render-title" value={title} maxLength={120} required onChange={(e) => setTitle(e.target.value)} placeholder={t('renderJobs.titlePlaceholder')} />
+                <div className="flex items-center justify-between gap-3 text-xs text-fg-3">
+                  <span>{t('renderJobs.titleHint')}</span>
+                  <span className="tabular-nums">{title.length}/120</span>
+                </div>
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label htmlFor="render-file">{t('renderJobs.fileLabel')}</Label>
-                <Input ref={fileRef} id="render-file" type="file" accept="video/mp4" required />
-                <p className="m-0 text-xs text-fg-3">{t('renderJobs.fileHint')}</p>
+                <label htmlFor="render-file" className={`file-dropzone ${selectedFileName ? 'file-dropzone--selected' : ''}`}>
+                  <span className="file-dropzone__icon"><FileVideo size={22} aria-hidden="true" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-fg">{selectedFileName || t('renderJobs.fileDrop')}</span>
+                    <span className="mt-1 block text-xs text-fg-3">{t('renderJobs.fileHint')}</span>
+                  </span>
+                  <span className="file-dropzone__action">{t('renderJobs.fileAction')}</span>
+                </label>
+                <Input ref={fileRef} id="render-file" type="file" accept="video/mp4" required className="sr-only" onChange={(event) => setSelectedFileName(event.target.files?.[0]?.name ?? '')} />
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label htmlFor="subtitle-language" className="flex items-center gap-1.5">
-                  <Languages size={15} /> {t('renderJobs.translationLabel')}
+                  <Languages size={15} aria-hidden="true" /> {t('renderJobs.translationLabel')}
                 </Label>
                 <select
                   id="subtitle-language"
                   name="subtitleTranslationLanguage"
                   value={translationLanguage}
                   onChange={(event) => setTranslationLanguage(event.target.value as SubtitleTranslationLanguage)}
-                  className="h-10 w-full rounded-[6px] border border-input bg-bg px-3 text-sm text-fg outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  className="h-11 w-full rounded-[7px] border border-input bg-bg px-3 text-sm text-fg outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
                 >
                   {SUBTITLE_TRANSLATION_LANGUAGES.map((language) => (
                     <option key={language} value={language}>{t(`renderJobs.translation.${language}`)}</option>
                   ))}
                 </select>
-                <p className="m-0 text-xs text-fg-3">{t('renderJobs.translationHint')}</p>
+                <p className="m-0 text-xs leading-5 text-fg-3">{t('renderJobs.translationHint')}</p>
               </div>
-            </div>
+            </section>
 
-            <fieldset className="m-0 min-w-0 border-0 p-0">
-              <legend className="mb-2 flex items-center gap-1.5 text-sm font-medium text-fg">
-                <Sparkles size={15} /> {t('renderJobs.animationLabel')}
-              </legend>
-              <div className="overflow-hidden rounded-[6px] border border-primary bg-bg ring-2 ring-primary/15">
-                <div className="aspect-video overflow-hidden bg-inset">
-                  <img
-                    src={`/subtitle-composition-preview/${animationId}.jpg`}
-                    alt=""
-                    className="size-full object-cover"
-                  />
+            <fieldset className="grid min-w-0 content-start gap-3 border-0 p-0" aria-labelledby="render-style-heading">
+              <legend className="sr-only">{t('renderJobs.animationLabel')}</legend>
+              <div className="form-section-heading">
+                <span className="form-step">02</span>
+                <div>
+                  <h2 id="render-style-heading" className="form-section-title">{t('renderJobs.styleStep')}</h2>
+                  <p className="form-section-copy">{t('renderJobs.styleStepHint')}</p>
                 </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm font-semibold">
+                <span className="flex items-center gap-1.5"><Sparkles size={15} aria-hidden="true" /> {t('renderJobs.animationLabel')}</span>
+                <span className="rounded-full bg-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-primary">{t('renderJobs.preview.live')}</span>
+              </div>
+              <div className="overflow-hidden rounded-[6px] border border-primary bg-bg ring-2 ring-primary/15">
+                <SubtitleAnimationPreview animationId={animationId} translationLanguage={translationLanguage} locale={locale} t={t} />
                 <div className="flex min-h-12 flex-wrap items-center justify-between gap-2 px-3 py-2.5">
                   <span className="flex items-center gap-2 text-sm font-medium">
                     <Check size={16} className="text-primary" aria-hidden="true" />
@@ -226,72 +296,95 @@ function RenderJobsPage() {
                   </span>
                 </div>
               </div>
-              <details className="mt-2 overflow-hidden rounded-[6px] border border-border bg-bg">
-                <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-bg-alt">
-                  {t('renderJobs.browseAnimations', { count: SUBTITLE_ANIMATION_IDS.length })}
-                </summary>
-                <div className="border-t border-border p-3">
-                  <p className="mb-3 mt-0 text-xs text-fg-3">{t('renderJobs.animationLibraryDescription')}</p>
-                  <div className="relative mb-3">
-                    <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" />
-                    <Input
-                      value={animationSearch}
-                      onChange={(event) => setAnimationSearch(event.target.value)}
-                      placeholder={t('renderJobs.searchAnimations')}
-                      className="pl-9"
-                    />
+              <div className="mt-2 overflow-hidden rounded-[6px] border border-border bg-bg">
+                <button
+                  type="button"
+                  aria-expanded={animationLibraryOpen}
+                  aria-controls="subtitle-animation-library"
+                  onClick={() => setAnimationLibraryOpen((open) => !open)}
+                  className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left text-sm font-semibold transition-colors hover:bg-bg-alt"
+                >
+                  <span>{t('renderJobs.browseAnimations', { count: SUBTITLE_ANIMATION_IDS.length })}</span>
+                  <ChevronDown
+                    size={17}
+                    aria-hidden="true"
+                    className={`shrink-0 text-fg-3 transition-transform ${animationLibraryOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {animationLibraryOpen && (
+                  <div id="subtitle-animation-library" className="border-t border-border p-3">
+                    <p className="mb-3 mt-0 text-xs text-fg-3">{t('renderJobs.animationLibraryDescription')}</p>
+                    <div className="relative mb-3">
+                      <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" />
+                      <Input
+                        value={animationSearch}
+                        onChange={(event) => setAnimationSearch(event.target.value)}
+                        placeholder={t('renderJobs.searchAnimations')}
+                        className="pl-9"
+                      />
+                    </div>
+                    <div className="max-h-[430px] overflow-y-auto pr-1" role="radiogroup" aria-label={t('renderJobs.animationLabel')}>
+                      {filteredAnimationIds.length === 0 ? (
+                        <p className="py-10 text-center text-sm text-fg-3">{t('renderJobs.noAnimations')}</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {filteredAnimationIds.map((id) => {
+                            const selected = animationId === id
+                            return (
+                              <button
+                                type="button"
+                                role="radio"
+                                aria-checked={selected}
+                                key={id}
+                                onClick={() => {
+                                  setAnimationId(id)
+                                  setAnimationSearch('')
+                                }}
+                                className={`group cursor-pointer overflow-hidden rounded-[6px] border bg-bg p-0 text-left transition-colors ${selected ? 'border-primary ring-2 ring-primary/15' : 'border-border hover:border-fg-3'}`}
+                              >
+                                <span className="block aspect-[328/160] overflow-hidden bg-inset">
+                                  <video
+                                    key={`${previewLanguage(locale, translationLanguage)}-${id}`}
+                                    src={`/subtitle-composition-preview/${previewLanguage(locale, translationLanguage)}/${id}.webm`}
+                                    poster={`/subtitle-composition-preview/${previewLanguage(locale, translationLanguage)}/${id}.jpg`}
+                                    muted
+                                    autoPlay
+                                    loop
+                                    playsInline
+                                    preload="metadata"
+                                    aria-hidden="true"
+                                    className="size-full object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+                                  />
+                                </span>
+                                <span className="flex min-h-10 items-center justify-between gap-2 px-2.5 py-2 text-xs font-medium">
+                                  <span>{t(`renderJobs.animation.${id}`)}</span>
+                                  {selected && <Check size={15} className="shrink-0 text-primary" aria-hidden="true" />}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="max-h-[430px] overflow-y-auto pr-1" role="radiogroup" aria-label={t('renderJobs.animationLabel')}>
-                    {filteredAnimationIds.length === 0 ? (
-                      <p className="py-10 text-center text-sm text-fg-3">{t('renderJobs.noAnimations')}</p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {filteredAnimationIds.map((id) => {
-                          const selected = animationId === id
-                          return (
-                            <button
-                              type="button"
-                              role="radio"
-                              aria-checked={selected}
-                              key={id}
-                              onClick={() => {
-                                setAnimationId(id)
-                                setAnimationSearch('')
-                              }}
-                              className={`group cursor-pointer overflow-hidden rounded-[6px] border bg-bg p-0 text-left transition-colors ${selected ? 'border-primary ring-2 ring-primary/15' : 'border-border hover:border-fg-3'}`}
-                            >
-                              <span className="block aspect-video overflow-hidden bg-inset">
-                                <img
-                                  src={`/subtitle-composition-preview/${id}.jpg`}
-                                  alt=""
-                                  loading="lazy"
-                                  className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-                                />
-                              </span>
-                              <span className="flex min-h-10 items-center justify-between gap-2 px-2.5 py-2 text-xs font-medium">
-                                <span>{t(`renderJobs.animation.${id}`)}</span>
-                                {selected && <Check size={15} className="shrink-0 text-primary" aria-hidden="true" />}
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </details>
+                )}
+              </div>
               <p className="mb-0 mt-2 text-xs text-fg-3">{t('renderJobs.animationHint')}</p>
             </fieldset>
           </div>
-          <div>
-            <Button type="submit" disabled={busy}>
-              <Upload size={16} /> {busy ? t('renderJobs.uploading') : t('renderJobs.submit')}
+          <div className="form-actions">
+            <div className="flex min-w-0 items-center gap-2 text-xs text-fg-3">
+              <span className="size-1.5 shrink-0 rounded-full bg-primary" />
+              <span>{t('renderJobs.formNote')}</span>
+            </div>
+            <Button type="submit" size="lg" disabled={busy}>
+              <Upload size={16} aria-hidden="true" /> {busy ? t('renderJobs.uploading') : t('renderJobs.submit')}
             </Button>
           </div>
         </form>
       </Card>
 
-      <div className="mt-8 max-w-4xl">
+      <div className="mt-8 max-w-6xl">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="m-0 text-[15px] font-semibold">{t('renderJobs.mine')}</h2>
           {hasActive && <Badge variant="pro" dot>{t('renderJobs.active')}</Badge>}
