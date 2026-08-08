@@ -156,6 +156,9 @@ function smartClipPayload(job, localSourceUrl) {
       template: 'meitu-beauty-keep-20260626',
       directGenerate: true,
       outputOrientation: 'auto',
+      subtitleTranslationTargetLang:
+        job.subtitle.translationLanguage === 'original' ? undefined : job.subtitle.translationLanguage,
+      subtitleAnimationStructureId: job.subtitle.animationId,
       titles: [job.title],
       video: [{ video: localSourceUrl }],
     },

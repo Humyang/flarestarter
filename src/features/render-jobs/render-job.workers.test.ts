@@ -27,7 +27,9 @@ beforeEach(async () => {
     `CREATE TABLE render_job (
       id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL, asset_id TEXT NOT NULL,
       agent_claim_token TEXT UNIQUE, agent_claim_expires_at INTEGER, agent_attempt_count INTEGER NOT NULL DEFAULT 0,
-      renderer_task_id TEXT UNIQUE, title TEXT NOT NULL, status TEXT NOT NULL, phase TEXT,
+      renderer_task_id TEXT UNIQUE, title TEXT NOT NULL,
+      subtitle_translation_language TEXT NOT NULL DEFAULT 'original', subtitle_animation_id TEXT NOT NULL DEFAULT 'bankDeposit',
+      status TEXT NOT NULL, phase TEXT,
       output_key TEXT, error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
       FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
       FOREIGN KEY (asset_id) REFERENCES render_asset(id) ON DELETE CASCADE
@@ -42,10 +44,14 @@ test('creates an owned asset/job pair and hides it from another user', async () 
   const owner = scopeFromUser('user-a')
   const other = scopeFromUser('user-b')
   const record = await createRenderRecords(db, owner, {
-    title: ' Demo ', fileName: 'source.mp4', contentType: 'video/mp4', sizeBytes: 1234, now: 1000,
+    title: ' Demo ', fileName: 'source.mp4', contentType: 'video/mp4', sizeBytes: 1234,
+    subtitle: { translationLanguage: 'ja', animationId: 'historyStack' }, now: 1000,
   })
 
-  expect(await listRenderJobs(db, owner)).toMatchObject([{ id: record.jobId, title: 'Demo', status: 'submitting' }])
+  expect(await listRenderJobs(db, owner)).toMatchObject([{
+    id: record.jobId, title: 'Demo', status: 'submitting',
+    subtitleTranslationLanguage: 'ja', subtitleAnimationId: 'historyStack',
+  }])
   expect(await listRenderJobs(db, other)).toEqual([])
   expect(await findOwnedRenderJob(db, other, record.jobId)).toBeNull()
 
@@ -60,7 +66,8 @@ test('requeues only an owned failed job and clears stale agent state', async () 
   const owner = scopeFromUser('user-a')
   const other = scopeFromUser('user-b')
   const record = await createRenderRecords(db, owner, {
-    title: 'Retry me', fileName: 'source.mp4', contentType: 'video/mp4', sizeBytes: 1234, now: 1000,
+    title: 'Retry me', fileName: 'source.mp4', contentType: 'video/mp4', sizeBytes: 1234,
+    subtitle: { translationLanguage: 'original', animationId: 'bankDeposit' }, now: 1000,
   })
   await db.update(renderJob).set({
     agentClaimToken: 'old-claim',

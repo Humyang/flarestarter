@@ -29,21 +29,32 @@ interface FlareAccount {
   name: string
 }
 
+interface SmartClipSubtitleOptions {
+  translationLanguage: string
+  animationId: string
+}
+
 export function buildSmartClipPayload(input: {
   jobId: string
+  retryToken?: string
   sourceUrl: string
   title: string
   account: FlareAccount
+  subtitle: SmartClipSubtitleOptions
 }) {
   return {
     account: input.account,
     task: {
-      requestId: `flare:${input.jobId}`,
+      requestId: `flare:${input.jobId}${input.retryToken ? `:retry:${input.retryToken}` : ''}`,
       workName: input.title,
       template: 'meitu-beauty-keep-20260626',
       directGenerate: true,
       outputOrientation: 'auto',
-      titles: [input.title],
+      subtitleTranslationTargetLang:
+        input.subtitle.translationLanguage === 'original' ? undefined : input.subtitle.translationLanguage,
+      subtitleAnimationStructureId: input.subtitle.animationId,
+      // The render page title identifies the job only; it is not a visible title segment.
+      titles: [],
       video: [{ video: input.sourceUrl }],
     },
   }
@@ -59,7 +70,14 @@ async function readEnvelope<T>(response: Response, operation: string): Promise<T
 
 export async function submitSmartClipTask(
   base: string,
-  input: { jobId: string; sourceUrl: string; title: string; account: FlareAccount },
+  input: {
+    jobId: string
+    retryToken?: string
+    sourceUrl: string
+    title: string
+    account: FlareAccount
+    subtitle: SmartClipSubtitleOptions
+  },
   fetcher: typeof fetch = fetch,
 ): Promise<SmartClipTaskStatus> {
   const response = await fetcher(`${base}/clip-task/flare`, {

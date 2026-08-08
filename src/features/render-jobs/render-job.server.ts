@@ -2,12 +2,28 @@ import { and, desc, eq } from 'drizzle-orm'
 import type { DB } from '@/db/client'
 import { ownedBy, withOwner, type Scope } from '@/db/scope'
 import { renderAsset, renderJob, type RenderJob } from './render-job.schema'
-import type { RenderJobStatus, RenderJobView } from './render-job.shared'
+import {
+  DEFAULT_SUBTITLE_ANIMATION_ID,
+  SUBTITLE_ANIMATION_IDS,
+  SUBTITLE_TRANSLATION_LANGUAGES,
+  type RenderJobStatus,
+  type RenderJobView,
+  type RenderSubtitleOptions,
+  type SubtitleAnimationId,
+  type SubtitleTranslationLanguage,
+} from './render-job.shared'
 
 export async function createRenderRecords(
   db: DB,
   scope: Scope,
-  input: { title: string; fileName: string; contentType: string; sizeBytes: number; now: number },
+  input: {
+    title: string
+    fileName: string
+    contentType: string
+    sizeBytes: number
+    subtitle: RenderSubtitleOptions
+    now: number
+  },
 ) {
   const assetId = crypto.randomUUID()
   const jobId = crypto.randomUUID()
@@ -21,6 +37,8 @@ export async function createRenderRecords(
     })),
     db.insert(renderJob).values(withOwner(scope, {
       id: jobId, assetId, title: input.title.trim(), status: 'submitting',
+      subtitleTranslationLanguage: input.subtitle.translationLanguage,
+      subtitleAnimationId: input.subtitle.animationId,
       createdAt: now, updatedAt: now,
     })),
   ])
@@ -40,6 +58,12 @@ export async function findOwnedRenderJob(db: DB, scope: Scope, id: string): Prom
   const [job] = await db.select().from(renderJob)
     .where(and(ownedBy(renderJob, scope), eq(renderJob.id, id))).limit(1)
   return job ?? null
+}
+
+export async function findOwnedRenderAsset(db: DB, scope: Scope, id: string) {
+  const [asset] = await db.select().from(renderAsset)
+    .where(and(ownedBy(renderAsset, scope), eq(renderAsset.id, id))).limit(1)
+  return asset ?? null
 }
 
 export async function updateOwnedRenderJob(
@@ -79,6 +103,12 @@ export async function getAssetByToken(db: DB, id: string, token: string) {
 }
 
 function toView(job: RenderJob, fileName: string): RenderJobView {
+  const translationLanguage = SUBTITLE_TRANSLATION_LANGUAGES.includes(
+    job.subtitleTranslationLanguage as SubtitleTranslationLanguage,
+  ) ? job.subtitleTranslationLanguage as SubtitleTranslationLanguage : 'original'
+  const animationId = SUBTITLE_ANIMATION_IDS.includes(job.subtitleAnimationId as SubtitleAnimationId)
+    ? job.subtitleAnimationId as SubtitleAnimationId
+    : DEFAULT_SUBTITLE_ANIMATION_ID
   return {
     id: job.id,
     title: job.title,
@@ -87,6 +117,8 @@ function toView(job: RenderJob, fileName: string): RenderJobView {
     phase: job.phase,
     error: job.error,
     agentAttemptCount: job.agentAttemptCount,
+    subtitleTranslationLanguage: translationLanguage,
+    subtitleAnimationId: animationId,
     readyToDownload: job.status === 'completed' && !!job.outputKey,
     createdAt: new Date(job.createdAt).toISOString(),
     updatedAt: new Date(job.updatedAt).toISOString(),

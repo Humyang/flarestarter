@@ -1,11 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { CircleCheck, Clock3, Download, LoaderCircle, RotateCcw, TriangleAlert, Upload } from 'lucide-react'
+import { Check, CircleCheck, Clock3, Download, Languages, LoaderCircle, RotateCcw, Search, Sparkles, TriangleAlert, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { requireUser } from '@/features/auth/middleware'
 import { getEntitlement } from '@/features/billing/middleware'
 import { createRenderJobFn, listRenderJobsFn, retryRenderJobFn, syncRenderJobsFn } from '@/features/render-jobs/actions'
-import type { RenderJobStatus, RenderJobView } from '@/features/render-jobs/render-job.shared'
+import {
+  DEFAULT_SUBTITLE_ANIMATION_ID,
+  SUBTITLE_ANIMATION_IDS,
+  SUBTITLE_TRANSLATION_LANGUAGES,
+  type RenderJobStatus,
+  type RenderJobView,
+  type SubtitleAnimationId,
+  type SubtitleTranslationLanguage,
+} from '@/features/render-jobs/render-job.shared'
 import { AppShell } from '@/components/app/app-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -100,10 +108,17 @@ function RenderJobsPage() {
   const { t } = useTranslation()
   const [jobs, setJobs] = useState(initial.jobs)
   const [title, setTitle] = useState('')
+  const [translationLanguage, setTranslationLanguage] = useState<SubtitleTranslationLanguage>('original')
+  const [animationId, setAnimationId] = useState<SubtitleAnimationId>(DEFAULT_SUBTITLE_ANIMATION_ID)
+  const [animationSearch, setAnimationSearch] = useState('')
   const [busy, setBusy] = useState(false)
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const hasActive = jobs.some((job) => ['submitting', 'queued', 'running'].includes(job.status))
+  const normalizedAnimationSearch = animationSearch.trim().toLocaleLowerCase()
+  const filteredAnimationIds = SUBTITLE_ANIMATION_IDS.filter((id) => (
+    !normalizedAnimationSearch || `${id} ${t(`renderJobs.animation.${id}`)}`.toLocaleLowerCase().includes(normalizedAnimationSearch)
+  ))
 
   useEffect(() => {
     if (!hasActive) return
@@ -118,6 +133,8 @@ function RenderJobsPage() {
     const file = fileRef.current?.files?.[0]
     const data = new FormData()
     data.set('title', title)
+    data.set('subtitleTranslationLanguage', translationLanguage)
+    data.set('subtitleAnimationId', animationId)
     if (file) data.set('file', file)
     setBusy(true)
     try {
@@ -158,16 +175,113 @@ function RenderJobsPage() {
         <p className="mt-1.5 text-[14.5px] text-fg-2">{t('renderJobs.subtitle')}</p>
       </div>
 
-      <Card className="max-w-xl p-5">
+      <Card className="max-w-5xl p-5 sm:p-6">
         <form onSubmit={submit} className="grid gap-4">
-          <div className="grid gap-1.5">
-            <Label htmlFor="render-title">{t('renderJobs.titleLabel')}</Label>
-            <Input id="render-title" value={title} maxLength={120} required onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="render-file">{t('renderJobs.fileLabel')}</Label>
-            <Input ref={fileRef} id="render-file" type="file" accept="video/mp4" required />
-            <p className="m-0 text-xs text-fg-3">{t('renderJobs.fileHint')}</p>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <div className="grid content-start gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="render-title">{t('renderJobs.titleLabel')}</Label>
+                <Input id="render-title" value={title} maxLength={120} required onChange={(e) => setTitle(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="render-file">{t('renderJobs.fileLabel')}</Label>
+                <Input ref={fileRef} id="render-file" type="file" accept="video/mp4" required />
+                <p className="m-0 text-xs text-fg-3">{t('renderJobs.fileHint')}</p>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="subtitle-language" className="flex items-center gap-1.5">
+                  <Languages size={15} /> {t('renderJobs.translationLabel')}
+                </Label>
+                <select
+                  id="subtitle-language"
+                  name="subtitleTranslationLanguage"
+                  value={translationLanguage}
+                  onChange={(event) => setTranslationLanguage(event.target.value as SubtitleTranslationLanguage)}
+                  className="h-10 w-full rounded-[6px] border border-input bg-bg px-3 text-sm text-fg outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                >
+                  {SUBTITLE_TRANSLATION_LANGUAGES.map((language) => (
+                    <option key={language} value={language}>{t(`renderJobs.translation.${language}`)}</option>
+                  ))}
+                </select>
+                <p className="m-0 text-xs text-fg-3">{t('renderJobs.translationHint')}</p>
+              </div>
+            </div>
+
+            <fieldset className="m-0 min-w-0 border-0 p-0">
+              <legend className="mb-2 flex items-center gap-1.5 text-sm font-medium text-fg">
+                <Sparkles size={15} /> {t('renderJobs.animationLabel')}
+              </legend>
+              <div className="overflow-hidden rounded-[6px] border border-primary bg-bg ring-2 ring-primary/15">
+                <div className="aspect-video overflow-hidden bg-inset">
+                  <img
+                    src={`/subtitle-composition-preview/${animationId}.jpg`}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                </div>
+                <div className="flex min-h-12 flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <Check size={16} className="text-primary" aria-hidden="true" />
+                    {t(`renderJobs.animation.${animationId}`)}
+                  </span>
+                </div>
+              </div>
+              <details className="mt-2 overflow-hidden rounded-[6px] border border-border bg-bg">
+                <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-bg-alt">
+                  {t('renderJobs.browseAnimations', { count: SUBTITLE_ANIMATION_IDS.length })}
+                </summary>
+                <div className="border-t border-border p-3">
+                  <p className="mb-3 mt-0 text-xs text-fg-3">{t('renderJobs.animationLibraryDescription')}</p>
+                  <div className="relative mb-3">
+                    <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" />
+                    <Input
+                      value={animationSearch}
+                      onChange={(event) => setAnimationSearch(event.target.value)}
+                      placeholder={t('renderJobs.searchAnimations')}
+                      className="pl-9"
+                    />
+                  </div>
+                  <div className="max-h-[430px] overflow-y-auto pr-1" role="radiogroup" aria-label={t('renderJobs.animationLabel')}>
+                    {filteredAnimationIds.length === 0 ? (
+                      <p className="py-10 text-center text-sm text-fg-3">{t('renderJobs.noAnimations')}</p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {filteredAnimationIds.map((id) => {
+                          const selected = animationId === id
+                          return (
+                            <button
+                              type="button"
+                              role="radio"
+                              aria-checked={selected}
+                              key={id}
+                              onClick={() => {
+                                setAnimationId(id)
+                                setAnimationSearch('')
+                              }}
+                              className={`group cursor-pointer overflow-hidden rounded-[6px] border bg-bg p-0 text-left transition-colors ${selected ? 'border-primary ring-2 ring-primary/15' : 'border-border hover:border-fg-3'}`}
+                            >
+                              <span className="block aspect-video overflow-hidden bg-inset">
+                                <img
+                                  src={`/subtitle-composition-preview/${id}.jpg`}
+                                  alt=""
+                                  loading="lazy"
+                                  className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                                />
+                              </span>
+                              <span className="flex min-h-10 items-center justify-between gap-2 px-2.5 py-2 text-xs font-medium">
+                                <span>{t(`renderJobs.animation.${id}`)}</span>
+                                {selected && <Check size={15} className="shrink-0 text-primary" aria-hidden="true" />}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </details>
+              <p className="mb-0 mt-2 text-xs text-fg-3">{t('renderJobs.animationHint')}</p>
+            </fieldset>
           </div>
           <div>
             <Button type="submit" disabled={busy}>
@@ -202,6 +316,10 @@ function RenderJobsPage() {
                           <Badge variant={STATUS_VARIANT[job.status]}>{t(`renderJobs.status.${job.status}`)}</Badge>
                         </div>
                         <p className="mb-0 mt-1 truncate text-sm text-fg-2">{job.fileName}</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <Badge variant="pro">{t(`renderJobs.animation.${job.subtitleAnimationId}`)}</Badge>
+                          <Badge variant="warn">{t(`renderJobs.translation.${job.subtitleTranslationLanguage}`)}</Badge>
+                        </div>
                       </div>
                     </div>
                     <div className="flex min-h-9 items-center gap-2">

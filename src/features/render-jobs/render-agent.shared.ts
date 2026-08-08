@@ -10,6 +10,10 @@ export interface RenderAgentClaim {
   claimToken: string
   leaseExpiresAt: string
   title: string
+  subtitle: {
+    translationLanguage: string
+    animationId: string
+  }
   account: {
     id: string
     email: string

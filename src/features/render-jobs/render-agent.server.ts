@@ -65,6 +65,8 @@ export async function claimNextAgentJob(db: DB, sourceOrigin: string, now: numbe
     id: renderJob.id,
     userId: renderJob.userId,
     title: renderJob.title,
+    subtitleTranslationLanguage: renderJob.subtitleTranslationLanguage,
+    subtitleAnimationId: renderJob.subtitleAnimationId,
     assetId: renderAsset.id,
     sourceToken: renderAsset.sourceToken,
     fileName: renderAsset.fileName,
@@ -109,6 +111,10 @@ export async function claimNextAgentJob(db: DB, sourceOrigin: string, now: numbe
       claimToken,
       leaseExpiresAt: claimExpiresAt.toISOString(),
       title: candidate.title,
+      subtitle: {
+        translationLanguage: candidate.subtitleTranslationLanguage,
+        animationId: candidate.subtitleAnimationId,
+      },
       account: {
         id: candidate.userId,
         email: candidate.accountEmail,

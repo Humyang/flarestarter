@@ -24,7 +24,7 @@ export const createRenderJobFn = createServerFn({ method: 'POST' })
     const { env } = await import('@/lib/env')
     const { createDb } = await import('@/db/client')
     const { scopeFromUser } = await import('@/db/scope')
-    const { validateRenderUpload } = await import('./render-job.shared')
+    const { readRenderSubtitleOptions, validateRenderUpload } = await import('./render-job.shared')
     const { createRenderRecords, listRenderJobs, updateOwnedRenderJob } = await import('./render-job.server')
     const { localSmartClipBase, smartClipPhase, submitSmartClipTask } = await import('./local-smart-clip')
     const { agentBridgeConfigured } = await import('./render-agent.shared')
@@ -36,13 +36,18 @@ export const createRenderJobFn = createServerFn({ method: 'POST' })
     if (!(file instanceof File)) return { ok: false, reason: 'noFile' }
     const reason = validateRenderUpload({ type: file.type, size: file.size, title })
     if (reason) return { ok: false, reason }
+    const subtitle = readRenderSubtitleOptions({
+      translationLanguage: data.get('subtitleTranslationLanguage'),
+      animationId: data.get('subtitleAnimationId'),
+    })
+    if (!subtitle) return { ok: false, reason: 'subtitleOptions' }
     const smartClipBase = localSmartClipBase(env.SMART_CLIP_API_URL)
     const agentSecret = (env as unknown as { AGENT_SHARED_SECRET?: string }).AGENT_SHARED_SECRET
     if (!smartClipBase && !agentBridgeConfigured(agentSecret)) return { ok: false, reason: 'smartClip' }
 
     const record = await createRenderRecords(db, scope, {
       title, fileName: file.name.slice(0, 255), contentType: file.type,
-      sizeBytes: file.size, now: Date.now(),
+      sizeBytes: file.size, subtitle, now: Date.now(),
     })
     try {
       await env.BUCKET.put(record.objectKey, await file.arrayBuffer(), {
@@ -56,6 +61,7 @@ export const createRenderJobFn = createServerFn({ method: 'POST' })
           sourceUrl: sourceUrl.toString(),
           title,
           account: { id: user.id, email: user.email, name: user.name },
+          subtitle,
         })
         await updateOwnedRenderJob(db, scope, record.jobId, {
           rendererTaskId: task.taskId,
@@ -83,17 +89,60 @@ export const retryRenderJobFn = createServerFn({ method: 'POST' })
     const { createDb } = await import('@/db/client')
     const { scopeFromUser } = await import('@/db/scope')
     const { agentBridgeConfigured } = await import('./render-agent.shared')
-    const { listRenderJobs, retryOwnedRenderJob } = await import('./render-job.server')
+    const { localSmartClipBase, smartClipPhase, submitSmartClipTask } = await import('./local-smart-clip')
+    const {
+      findOwnedRenderAsset,
+      findOwnedRenderJob,
+      listRenderJobs,
+      retryOwnedRenderJob,
+      updateOwnedRenderJob,
+    } = await import('./render-job.server')
     const user = await currentUser()
     const scope = scopeFromUser(user.id)
     const db = createDb(env.DB)
     const jobs = () => listRenderJobs(db, scope)
+    const smartClipBase = localSmartClipBase(env.SMART_CLIP_API_URL)
     const agentSecret = (env as unknown as { AGENT_SHARED_SECRET?: string }).AGENT_SHARED_SECRET
-    if (!agentBridgeConfigured(agentSecret)) return { ok: false, reason: 'smartClip', jobs: await jobs() }
+    if (!smartClipBase && !agentBridgeConfigured(agentSecret)) {
+      return { ok: false, reason: 'smartClip', jobs: await jobs() }
+    }
+    const job = data.id.length > 0 ? await findOwnedRenderJob(db, scope, data.id) : null
+    const asset = job ? await findOwnedRenderAsset(db, scope, job.assetId) : null
     const retried = data.id.length > 0 && await retryOwnedRenderJob(db, scope, data.id, Date.now())
-    return retried
-      ? { ok: true, jobs: await jobs() }
-      : { ok: false, reason: 'notRetryable', jobs: await jobs() }
+    if (!retried || !job || !asset) {
+      return { ok: false, reason: 'notRetryable', jobs: await jobs() }
+    }
+    if (!smartClipBase) return { ok: true, jobs: await jobs() }
+
+    try {
+      const sourceUrl = new URL(`/api/render-assets/${asset.id}`, env.BETTER_AUTH_URL)
+      sourceUrl.searchParams.set('token', asset.sourceToken)
+      const task = await submitSmartClipTask(smartClipBase, {
+        jobId: job.id,
+        retryToken: String(Date.now()),
+        sourceUrl: sourceUrl.toString(),
+        title: job.title,
+        account: { id: user.id, email: user.email, name: user.name },
+        subtitle: {
+          translationLanguage: job.subtitleTranslationLanguage,
+          animationId: job.subtitleAnimationId,
+        },
+      })
+      await updateOwnedRenderJob(db, scope, job.id, {
+        rendererTaskId: task.taskId,
+        status: task.status === -3 || task.status === -1 ? 'queued' : 'running',
+        phase: smartClipPhase(task.status),
+        error: null,
+      }, Date.now())
+    } catch (error) {
+      await updateOwnedRenderJob(db, scope, job.id, {
+        status: 'failed',
+        phase: 'submit',
+        error: error instanceof Error ? error.message : String(error),
+      }, Date.now())
+      return { ok: false, reason: 'smartClip', jobs: await jobs() }
+    }
+    return { ok: true, jobs: await jobs() }
   })
 
 export const syncRenderJobsFn = createServerFn({ method: 'POST' }).handler(async (): Promise<RenderJobView[]> => {

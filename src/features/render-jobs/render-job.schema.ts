@@ -21,6 +21,8 @@ export const renderJob = sqliteTable('render_job', {
   agentAttemptCount: integer('agent_attempt_count').notNull().default(0),
   rendererTaskId: text('renderer_task_id'),
   title: text('title').notNull(),
+  subtitleTranslationLanguage: text('subtitle_translation_language').notNull().default('original'),
+  subtitleAnimationId: text('subtitle_animation_id').notNull().default('bankDeposit'),
   status: text('status').notNull(),
   phase: text('phase'),
   outputKey: text('output_key'),

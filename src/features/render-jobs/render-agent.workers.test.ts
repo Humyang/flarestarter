@@ -27,7 +27,9 @@ beforeEach(async () => {
     `CREATE TABLE render_job (
       id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL, asset_id TEXT NOT NULL,
       agent_claim_token TEXT UNIQUE, agent_claim_expires_at INTEGER, agent_attempt_count INTEGER NOT NULL DEFAULT 0,
-      renderer_task_id TEXT UNIQUE, title TEXT NOT NULL, status TEXT NOT NULL, phase TEXT,
+      renderer_task_id TEXT UNIQUE, title TEXT NOT NULL,
+      subtitle_translation_language TEXT NOT NULL DEFAULT 'original', subtitle_animation_id TEXT NOT NULL DEFAULT 'bankDeposit',
+      status TEXT NOT NULL, phase TEXT,
       output_key TEXT, error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
       FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
       FOREIGN KEY (asset_id) REFERENCES render_asset(id) ON DELETE CASCADE
@@ -41,7 +43,8 @@ async function queueJob() {
   const db = createDb(env.DB)
   const scope = scopeFromUser('user-a')
   const record = await createRenderRecords(db, scope, {
-    title: 'Cloud render', fileName: 'source.mp4', contentType: 'video/mp4', sizeBytes: 6, now: 1000,
+    title: 'Cloud render', fileName: 'source.mp4', contentType: 'video/mp4', sizeBytes: 6,
+    subtitle: { translationLanguage: 'fr', animationId: 'mixedSubtitle' }, now: 1000,
   })
   await env.BUCKET.put(record.objectKey, 'source')
   await updateOwnedRenderJob(db, scope, record.jobId, {
@@ -64,11 +67,18 @@ test('authenticates, claims once, reports progress, and uploads the output', asy
     'https://dve2.com/api/render-agent/claim', { method: 'POST', headers: authorization },
   ), bindings)
   const claimBody = await claimResponse.json() as {
-    job: { id: string; claimToken: string; account: { email: string }; source: { url: string } }
+    job: {
+      id: string
+      claimToken: string
+      account: { email: string }
+      subtitle: { translationLanguage: string; animationId: string }
+      source: { url: string }
+    }
   }
   expect(claimBody.job).toMatchObject({
     id: record.jobId,
     account: { email: 'a@example.com' },
+    subtitle: { translationLanguage: 'fr', animationId: 'mixedSubtitle' },
   })
   expect(claimBody.job.source.url).toContain(`/api/render-assets/${record.assetId}?token=`)
 

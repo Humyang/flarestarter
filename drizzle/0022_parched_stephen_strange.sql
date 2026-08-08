@@ -1,0 +1,2 @@
+ALTER TABLE `render_job` ADD `subtitle_translation_language` text DEFAULT 'original' NOT NULL;--> statement-breakpoint
+ALTER TABLE `render_job` ADD `subtitle_animation_id` text DEFAULT 'bankDeposit' NOT NULL;

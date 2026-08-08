@@ -22,15 +22,27 @@ describe('local Smart Clip boundary', () => {
     const payload = buildSmartClipPayload({
       jobId: 'job-1', sourceUrl: 'http://localhost/source.mp4', title: 'Demo',
       account: { id: 'user-1', email: 'user@example.com', name: 'User' },
+      subtitle: { translationLanguage: 'ja', animationId: 'historyStack' },
     })
     expect(payload).toMatchObject({
       account: { id: 'user-1', email: 'user@example.com', name: 'User' },
       task: {
         requestId: 'flare:job-1', workName: 'Demo', directGenerate: true,
+        subtitleTranslationTargetLang: 'ja', subtitleAnimationStructureId: 'historyStack',
+        titles: [],
         video: [{ video: 'http://localhost/source.mp4' }],
       },
     })
     expect(JSON.stringify(payload)).not.toMatch(/billing|credit|subscription/i)
+  })
+
+  test('uses a distinct request id when retrying a failed render', () => {
+    const payload = buildSmartClipPayload({
+      jobId: 'job-1', retryToken: '123', sourceUrl: 'http://localhost/source.mp4', title: 'Demo',
+      account: { id: 'user-1', email: 'user@example.com', name: 'User' },
+      subtitle: { translationLanguage: 'original', animationId: 'bankDeposit' },
+    })
+    expect(payload.task.requestId).toBe('flare:job-1:retry:123')
   })
 
   test('submits and reads a wrapped Smart Clip task response', async () => {
@@ -40,6 +52,7 @@ describe('local Smart Clip boundary', () => {
     const submitted = await submitSmartClipTask('http://127.0.0.1:7706/v1/ai-cut', {
       jobId: 'job-1', sourceUrl: 'http://localhost/source.mp4', title: 'Demo',
       account: { id: 'user-1', email: 'user@example.com', name: 'User' },
+      subtitle: { translationLanguage: 'original', animationId: 'bankDeposit' },
     }, fetcher)
     expect(submitted).toEqual({ taskId: 'ct_1', status: -2 })
     await expect(readSmartClipTask('http://127.0.0.1:7706/v1/ai-cut', 'ct_1', fetcher))
