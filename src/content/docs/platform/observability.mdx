@@ -14,6 +14,11 @@ title: "可观测性:分析与错误上报"
 
 token 是公开值,放 `wrangler.jsonc` 的 `vars` 即可(不必当 secret)。
 
+## Google Analytics 4
+
+根布局固定注入 GA4 Measurement ID `G-QEKHDPCR27` 的 `gtag.js`。CSP 已放行
+`www.googletagmanager.com` 脚本与 Google Analytics 数据上报域名。
+
 ## Sentry 错误上报(`SENTRY_DSN`)
 
 捕获 worker 端的**未处理异常 / promise rejection**(SSR、loader、server fn、API route)——也就是生产里你最看不见的那类错误。

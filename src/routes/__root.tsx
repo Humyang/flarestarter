@@ -49,6 +49,8 @@ export const Route = createRootRoute({
  * there is no flash. It deliberately does NOT write a cookie: visitors keep
  * following their system until they click the toggle (which does write one). */
 const THEME_BOOT_SCRIPT = `(function(){try{if(!/(?:^|;\\s*)theme=/.test(document.cookie)&&matchMedia('(prefers-color-scheme: light)').matches){document.documentElement.classList.replace('dark','light')}}catch(e){}})()`
+const GOOGLE_ANALYTICS_ID = 'G-QEKHDPCR27'
+const GOOGLE_ANALYTICS_BOOT_SCRIPT = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${GOOGLE_ANALYTICS_ID}');`
 
 function RootComponent() {
   const { theme, analyticsToken } = Route.useLoaderData()
@@ -65,6 +67,8 @@ function RootComponent() {
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <HeadContent />
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`} />
+        <script dangerouslySetInnerHTML={{ __html: GOOGLE_ANALYTICS_BOOT_SCRIPT }} />
       </head>
       <body>
         <Outlet />

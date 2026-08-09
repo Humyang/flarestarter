@@ -20,11 +20,11 @@ const BASE_HEADERS: Record<string, string> = {
 
 const PROD_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://static.cloudflareinsights.com", // Turnstile + Web Analytics beacon
+  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://www.googletagmanager.com", // Turnstile + analytics scripts
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:", // blob: for client-side avatar preview
   "font-src 'self' data:", // fonts are self-hosted under /fonts
-  "connect-src 'self' https://cloudflareinsights.com", // Web Analytics beacon POSTs
+  "connect-src 'self' https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com", // Analytics POSTs
   "frame-src https://challenges.cloudflare.com", // Turnstile widget iframe
   "frame-ancestors 'none'",
   "base-uri 'self'",
