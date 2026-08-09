@@ -112,8 +112,13 @@ interface CapturedEmail {
 // Pass adminEmails (comma-separated) to wire the bootstrap databaseHook that
 // assigns role='admin' on sign-up for matching emails (same logic as production).
 // ---------------------------------------------------------------------------
-export function createTestAuth(db: DB, adminEmails?: string) {
+export function createTestAuth(
+  db: DB,
+  adminEmails?: string,
+  options?: { requireEmailVerification?: boolean },
+) {
   const sentEmails: CapturedEmail[] = []
+  const requireEmailVerification = options?.requireEmailVerification ?? true
 
   const auth = betterAuth({
     secret: TEST_AUTH_ENV.BETTER_AUTH_SECRET,
@@ -121,13 +126,13 @@ export function createTestAuth(db: DB, adminEmails?: string) {
     database: drizzleAdapter(db, { provider: 'sqlite', schema }),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      requireEmailVerification,
       sendResetPassword: async ({ user, url }) => {
         sentEmails.push({ to: user.email, url })
       },
     },
     emailVerification: {
-      sendOnSignUp: true,
+      sendOnSignUp: requireEmailVerification,
       sendVerificationEmail: async ({ user, url }) => {
         sentEmails.push({ to: user.email, url })
       },

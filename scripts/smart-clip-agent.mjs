@@ -58,6 +58,7 @@ if (sharedSecret.length < 32) throw new Error('AGENT_SHARED_SECRET must be at le
 const pollIntervalMs = Math.max(1000, Number(process.env.AGENT_POLL_INTERVAL_MS || 5000))
 const taskPollIntervalMs = Math.max(1000, Number(process.env.SMART_CLIP_POLL_INTERVAL_MS || 3000))
 const leaseHeartbeatMs = Math.max(5000, Number(process.env.AGENT_HEARTBEAT_INTERVAL_MS || 30_000))
+const leaseFailureLimit = Math.max(2, Math.ceil(120_000 / leaseHeartbeatMs) - 1)
 const maxSourceBytes = 100 * 1024 * 1024
 const maxOutputBytes = 500 * 1024 * 1024
 const requestTimeoutMs = Math.max(10_000, Number(process.env.AGENT_REQUEST_TIMEOUT_MS || 60_000))
@@ -73,6 +74,22 @@ const request = (url, init = {}, timeoutMs = requestTimeoutMs) => fetch(url, {
   ...init,
   signal: init.signal || AbortSignal.timeout(timeoutMs),
 })
+
+async function requestWithRetry(url, init = {}, timeoutMs = requestTimeoutMs, attempts = 3) {
+  let lastError
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await request(url, init, timeoutMs)
+      if (response.status < 500 || attempt === attempts) return response
+      lastError = new Error(`HTTP ${response.status}`)
+    } catch (error) {
+      lastError = error
+      if (attempt === attempts) throw error
+    }
+    await sleep(Math.min(5000, 500 * 2 ** (attempt - 1)))
+  }
+  throw lastError || new Error('Request failed')
+}
 
 async function responseError(response) {
   const text = await response.text()
@@ -106,6 +123,7 @@ async function reportStatus(job, status, phase, error = null, rendererTaskId = n
 function startLeaseHeartbeat(job) {
   let active = true
   let leaseLost = false
+  let consecutiveFailures = 0
   let timer = null
 
   const heartbeat = async () => {
@@ -120,9 +138,16 @@ function startLeaseHeartbeat(job) {
         console.error(`[agent] lease lost for ${job.id}`)
       } else if (!response.ok) {
         throw new Error(await responseError(response))
+      } else {
+        consecutiveFailures = 0
       }
     } catch (error) {
+      consecutiveFailures += 1
       console.error(`[agent] heartbeat failed for ${job.id}:`, error instanceof Error ? error.message : error)
+      if (consecutiveFailures >= leaseFailureLimit) {
+        leaseLost = true
+        console.error(`[agent] lease lost after ${consecutiveFailures} heartbeat failures for ${job.id}`)
+      }
     } finally {
       if (active && !leaseLost) timer = setTimeout(heartbeat, leaseHeartbeatMs)
     }
@@ -148,10 +173,13 @@ function validateSourceUrl(job) {
 }
 
 function smartClipPayload(job, localSourceUrl) {
+  const attempt = Number.isSafeInteger(job.agentAttemptCount) && job.agentAttemptCount > 0
+    ? job.agentAttemptCount
+    : 1
   return {
     account: job.account,
     task: {
-      requestId: `flare:${job.id}`,
+      requestId: `flare:${job.id}:attempt:${attempt}`,
       workName: job.title,
       template: 'meitu-beauty-keep-20260626',
       directGenerate: true,
@@ -190,7 +218,7 @@ async function importSource(job) {
   const directory = await mkdtemp(join(tmpdir(), 'smart-clip-agent-'))
   const filePath = join(directory, 'source.mp4')
   try {
-    const response = await request(source, { redirect: 'error' }, transferTimeoutMs)
+    const response = await requestWithRetry(source, { redirect: 'error' }, transferTimeoutMs)
     if (!response.ok || !response.body) throw new Error(`Source download failed (${response.status})`)
     const contentType = response.headers.get('content-type')?.split(';')[0].trim()
     if (contentType !== 'video/mp4') throw new Error(`Source download returned ${contentType || 'no content type'}`)
@@ -233,7 +261,7 @@ async function submitSmartClip(job, localSourceUrl) {
 }
 
 async function readSmartClipTask(taskId) {
-  const response = await request(`${smartClipBase}/clip-task/flare/${encodeURIComponent(taskId)}`)
+  const response = await requestWithRetry(`${smartClipBase}/clip-task/flare/${encodeURIComponent(taskId)}`)
   return readSmartClipEnvelope(response, 'Smart Clip status')
 }
 
@@ -255,7 +283,7 @@ async function uploadOutput(job, outputUrl) {
   if (output.protocol !== 'http:' || output.origin !== new URL(smartClipBase).origin) {
     throw new Error('Smart Clip returned a non-local output URL')
   }
-  const video = await request(output, { redirect: 'error' }, transferTimeoutMs)
+  const video = await requestWithRetry(output, { redirect: 'error' }, transferTimeoutMs)
   if (!video.ok || !video.body) throw new Error(`Smart Clip output failed (${video.status})`)
   if (video.headers.get('content-type')?.split(';')[0].trim() !== 'video/mp4') {
     throw new Error('Smart Clip output is not video/mp4')
@@ -285,12 +313,18 @@ async function processJob(job) {
   console.log(`[agent] claimed ${job.id}`)
   const lease = startLeaseHeartbeat(job)
   try {
-    await reportStatus(job, 'running', 'source-download')
-    const localSourceUrl = await importSource(job)
-    lease.assertActive()
-    await reportStatus(job, 'running', 'source-imported')
-    await reportStatus(job, 'running', 'smart-clip-submit')
-    let task = await submitSmartClip(job, localSourceUrl)
+    let task
+    if (job.rendererTaskId) {
+      await reportStatus(job, 'running', 'renderer-recovery', null, job.rendererTaskId)
+      task = await readSmartClipTask(job.rendererTaskId)
+    } else {
+      await reportStatus(job, 'running', 'source-download')
+      const localSourceUrl = await importSource(job)
+      lease.assertActive()
+      await reportStatus(job, 'running', 'source-imported')
+      await reportStatus(job, 'running', 'smart-clip-submit')
+      task = await submitSmartClip(job, localSourceUrl)
+    }
     lease.assertActive()
     let lastPhase = smartClipPhase(task.status)
     await reportStatus(job, 'running', lastPhase, null, task.taskId)

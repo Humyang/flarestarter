@@ -161,6 +161,7 @@ export const zh: Dict = {
       invalidCredentials: '邮箱或密码不正确。',
       emailExists: '该邮箱已注册。',
       emailNotVerified: '请先验证邮箱后再登录。',
+      invalidOrigin: '当前访问地址未被允许，请使用已配置的应用地址打开。',
       invalidToken: '该链接无效或已过期。',
       weakPassword: '密码强度不足。',
       rateLimited: '请求过于频繁，请稍后再试。',

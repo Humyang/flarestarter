@@ -31,6 +31,7 @@ const envSchema = z
       .string({ error: 'BETTER_AUTH_SECRET is required' })
       .min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
     BETTER_AUTH_URL: z.url({ error: 'BETTER_AUTH_URL must be a valid absolute URL' }),
+    BETTER_AUTH_TRUSTED_ORIGINS: optional,
 
     RESEND_API_KEY: optional,
     RESEND_AUDIENCE_ID: optional,
@@ -55,6 +56,20 @@ const envSchema = z
     AGENT_SHARED_SECRET: optionalSecret,
   })
   .superRefine((env, ctx) => {
+    for (const origin of env.BETTER_AUTH_TRUSTED_ORIGINS?.split(',') ?? []) {
+      const value = origin.trim()
+      if (!value) continue
+      const parsed = z.url().safeParse(value)
+      if (!parsed.success || !/^https?:\/\//.test(value)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['BETTER_AUTH_TRUSTED_ORIGINS'],
+          message: 'BETTER_AUTH_TRUSTED_ORIGINS must contain comma-separated http(s) URLs',
+        })
+        break
+      }
+    }
+
     // OAuth: half a pair is always a misconfiguration.
     const pair = (a: keyof typeof env, b: keyof typeof env, label: string) => {
       if (!!env[a] !== !!env[b]) {

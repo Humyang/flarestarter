@@ -138,8 +138,9 @@ pnpm deploy:prod
 `dist` 的,deploy 只是把 build 产物推上去。用 `pnpm deploy:prod` / `pnpm deploy:staging` 即可。
 </Callout>
 
-部署完成后 wrangler 会打印 `https://<name>.<subdomain>.workers.dev`。首次需要在
-Dashboard 启用 workers.dev 子域,DNS 传播可能要等 ~1 分钟。
+配置自定义域后,生产环境会关闭 `workers.dev`,避免用户从非 canonical Origin 进入认证流程。
+`CF_PROD_DOMAIN` 会同时生成裸域 Custom Domain 和 `www.<domain>/*` route;Worker 将 `www`
+永久重定向到 `BETTER_AUTH_URL`,并保留路径与查询参数。
 
 ## 环境与 CI/CD
 
@@ -161,7 +162,7 @@ push 到 main 时以 `CLOUDFLARE_ENV=production` build 后自动部署 —— �
   | --- | --- | --- |
   | `CF_PROD_D1_ID` | ✅ | 生产 D1 的 `database_id` |
   | `CF_PROD_KV_ID` | ✅ | 生产 KV 命名空间 `id` |
-  | `CF_PROD_DOMAIN` | 可选 | 自定义域名(如 `example.com`),设了才注入 `routes` |
+  | `CF_PROD_DOMAIN` | 可选 | canonical 裸域(如 `example.com`),设了会注入裸域和 `www` 路由 |
 
   新增 binding/vars 时记得同步改 `wrangler.example.jsonc`,别让模板与实际配置漂移。
 

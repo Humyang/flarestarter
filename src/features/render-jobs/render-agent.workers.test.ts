@@ -77,6 +77,8 @@ test('authenticates, claims once, reports progress, and uploads the output', asy
   }
   expect(claimBody.job).toMatchObject({
     id: record.jobId,
+    agentAttemptCount: 1,
+    rendererTaskId: null,
     account: { email: 'a@example.com' },
     subtitle: { translationLanguage: 'fr', animationId: 'mixedSubtitle' },
   })
@@ -204,12 +206,15 @@ test('reclaims an expired lease, fences the old agent, and increments attempts',
   const first = await claimNextAgentJob(db, 'https://dve2.com', 1000)
   expect(first).toMatchObject({ id: record.jobId, leaseExpiresAt: new Date(1000 + 120_000).toISOString() })
 
-  await db.update(renderJob).set({ agentClaimExpiresAt: new Date(0) }).where(eq(renderJob.id, record.jobId))
+  await db.update(renderJob).set({
+    agentClaimExpiresAt: new Date(0),
+    rendererTaskId: 'ct_recover_1',
+  }).where(eq(renderJob.id, record.jobId))
   await expect(recoverExpiredAgentJobs(db, 3000)).resolves.toMatchObject({ requeued: 1, failed: 0 })
   await expect(renewClaimedAgentJob(db, record.jobId, first!.claimToken, 4000)).resolves.toBe(false)
 
   const second = await claimNextAgentJob(db, 'https://dve2.com', 5000)
-  expect(second).toMatchObject({ id: record.jobId })
+  expect(second).toMatchObject({ id: record.jobId, agentAttemptCount: 2, rendererTaskId: 'ct_recover_1' })
   const [job] = await db.select().from(renderJob).where(eq(renderJob.id, record.jobId))
   expect(job).toMatchObject({ status: 'running', phase: 'agent-claimed', agentAttemptCount: 2 })
 })

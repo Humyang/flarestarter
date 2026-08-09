@@ -174,6 +174,7 @@ export const en = {
       invalidCredentials: 'Invalid email or password.',
       emailExists: 'An account with this email already exists.',
       emailNotVerified: 'Please verify your email before logging in.',
+      invalidOrigin: 'This app address is not allowed. Open it from the configured URL.',
       invalidToken: 'This link is invalid or has expired.',
       weakPassword: 'Password is too weak.',
       rateLimited: 'Too many attempts. Try again later.',

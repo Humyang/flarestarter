@@ -28,6 +28,16 @@ test('short secret and bad url are errors', () => {
   )
 })
 
+test('trusted auth origins must be comma-separated http(s) URLs', () => {
+  expect(
+    validateEnv({ ...ok, BETTER_AUTH_TRUSTED_ORIGINS: 'http://192.168.1.26:3000,https://preview.example.com' })
+      .errors,
+  ).toEqual([])
+  expect(validateEnv({ ...ok, BETTER_AUTH_TRUSTED_ORIGINS: 'javascript:alert(1)' }).errors).toEqual([
+    'BETTER_AUTH_TRUSTED_ORIGINS must contain comma-separated http(s) URLs',
+  ])
+})
+
 test('half an OAuth pair is an error; a full pair is fine', () => {
   expect(validateEnv({ ...ok, GOOGLE_CLIENT_ID: 'id' }).errors).toEqual([
     expect.stringContaining('Google OAuth'),

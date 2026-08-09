@@ -7,10 +7,12 @@ import * as schema from './auth.schema'
 import { sendEmail } from '@/features/email/email.server'
 import { negotiateLocale, defaultLocale, type Locale } from '@/features/i18n/locale'
 import { isAdminEmail } from '@/features/admin/is-admin'
+import { resolveTrustedOrigins } from './trusted-origins'
 
 export interface AuthEnv {
   BETTER_AUTH_SECRET: string
   BETTER_AUTH_URL: string
+  BETTER_AUTH_TRUSTED_ORIGINS?: string
   GOOGLE_CLIENT_ID?: string
   GOOGLE_CLIENT_SECRET?: string
   GITHUB_CLIENT_ID?: string
@@ -46,6 +48,8 @@ export function createAuth(authEnv: AuthEnv, db: DB) {
   return betterAuth({
     secret: authEnv.BETTER_AUTH_SECRET,
     baseURL: authEnv.BETTER_AUTH_URL,
+    trustedOrigins: (request) =>
+      resolveTrustedOrigins(authEnv.BETTER_AUTH_TRUSTED_ORIGINS, authEnv.BETTER_AUTH_URL, request),
     database: drizzleAdapter(db, { provider: 'sqlite', schema }),
     emailAndPassword: {
       enabled: true,
@@ -58,7 +62,7 @@ export function createAuth(authEnv: AuthEnv, db: DB) {
       },
     },
     emailVerification: {
-      sendOnSignUp: true,
+      sendOnSignUp: Boolean(authEnv.RESEND_API_KEY),
       sendVerificationEmail: async ({ user, url }, request) => {
         const locale = localeFromRequest(request)
         await sendEmail({ to: user.email, locale, template: 'verify-email', data: { url } })

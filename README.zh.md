@@ -153,7 +153,7 @@ drizzle/           # 生成的 SQL 迁移文件（仓库根，与 src/ 同级）
 
 完整清单见 [`.dev.vars.example`](.dev.vars.example)。本地开发时一切可选，支持优雅降级。生产环境所需的 secrets 及配置方式见 [部署文档](https://flarestarter.com/docs/getting-started/deploy)：
 
-- `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`（同时决定 canonical / sitemap origin）—— **必填**；启动时校验（见 [安全文档](https://flarestarter.com/docs/platform/security)）。
+- `BETTER_AUTH_SECRET`、`BETTER_AUTH_URL`（同时决定 canonical / sitemap origin）—— **必填**；`BETTER_AUTH_TRUSTED_ORIGINS` 可显式允许局域网/预览 Origin；启动时校验（见 [安全文档](https://flarestarter.com/docs/platform/security)）。
 - `RESEND_API_KEY`、`EMAIL_FROM`（邮件服务；留空则由控制台捕获）。
 - `GOOGLE_CLIENT_ID/SECRET`、`GITHUB_CLIENT_ID/SECRET`（可选社交登录）。
 - `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`STRIPE_PRICE_PRO_*`（计费服务）；`STRIPE_WECHAT_PAY_ENABLED`（可选,设 `false` 关掉赞助页的微信支付入口）。

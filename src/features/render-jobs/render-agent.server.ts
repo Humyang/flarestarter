@@ -43,7 +43,6 @@ export async function recoverExpiredAgentJobs(db: DB, now: number): Promise<{ fa
   const requeued = await db.update(renderJob).set({
     agentClaimToken: null,
     agentClaimExpiresAt: null,
-    rendererTaskId: null,
     status: 'queued',
     phase: 'awaiting-agent',
     outputKey: null,
@@ -67,6 +66,8 @@ export async function claimNextAgentJob(db: DB, sourceOrigin: string, now: numbe
     title: renderJob.title,
     subtitleTranslationLanguage: renderJob.subtitleTranslationLanguage,
     subtitleAnimationId: renderJob.subtitleAnimationId,
+    agentAttemptCount: renderJob.agentAttemptCount,
+    rendererTaskId: renderJob.rendererTaskId,
     assetId: renderAsset.id,
     sourceToken: renderAsset.sourceToken,
     fileName: renderAsset.fileName,
@@ -110,6 +111,8 @@ export async function claimNextAgentJob(db: DB, sourceOrigin: string, now: numbe
       id: candidate.id,
       claimToken,
       leaseExpiresAt: claimExpiresAt.toISOString(),
+      agentAttemptCount: candidate.agentAttemptCount + 1,
+      rendererTaskId: candidate.rendererTaskId,
       title: candidate.title,
       subtitle: {
         translationLanguage: candidate.subtitleTranslationLanguage,

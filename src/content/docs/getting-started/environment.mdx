@@ -13,10 +13,14 @@ description: 了解 Smart Clip 需要配置哪些环境变量以及它们的用�
 
 <TypeTable
   type={{
-    BASE_URL: {
-      description: '应用的基础访问地址',
+    BETTER_AUTH_URL: {
+      description: '应用的 canonical 访问地址，也是 Better Auth 默认信任的 Origin',
       type: 'string',
       default: 'http://localhost:3000',
+    },
+    BETTER_AUTH_TRUSTED_ORIGINS: {
+      description: '可选的逗号分隔 Origin 白名单，用于局域网设备或受信任预览域；生产环境不要使用通配符',
+      type: 'string',
     },
     BETTER_AUTH_SECRET: {
       description: 'Better Auth 用于加密 Session 和 Token 的密钥。',

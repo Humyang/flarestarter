@@ -1,13 +1,14 @@
 /**
  * Auth integration tests — run on real Cloudflare D1 via workerd.
  *
- * 6 paths:
+ * 7 paths:
  *  1. register → unverified → cannot login
  *  2. verify email → login → session row exists
  *  3. requireUser / getSession with / without session
  *  4. password reset flow
  *  5. delete account cascades feedback
  *  6. session stable across multiple getSession calls
+ *  7. registration without email verification creates an authenticated session
  */
 import { test, expect, beforeAll } from 'vitest'
 import { env } from 'cloudflare:test'
@@ -270,4 +271,25 @@ test('6. session stable across multiple getSession calls', async () => {
     expect(result?.user.email).toBe(email)
     expect(result?.user.id).toBe(results[0]?.user.id)
   }
+})
+
+// ---------------------------------------------------------------------------
+// Test 7: no mail provider → registration signs the user in immediately
+// ---------------------------------------------------------------------------
+test('7. registration without email verification creates an authenticated session', async () => {
+  const db = createDb(env.DB)
+  const { auth, sentEmails } = createTestAuth(db, undefined, {
+    requireEmailVerification: false,
+  })
+  const email = 'test-t7@example.com'
+  const password = 'Password123!'
+
+  const signUpRes = await auth.api.signUpEmail({
+    body: { email, password, name: 'Test t7' },
+    asResponse: true,
+  })
+
+  expect(signUpRes.status).toBe(200)
+  expect(sentEmails).toHaveLength(0)
+  expect(await auth.api.getSession({ headers: cookieHeaders(extractCookie(signUpRes)) })).not.toBeNull()
 })

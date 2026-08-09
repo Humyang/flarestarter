@@ -14,6 +14,7 @@ import { withSecurityHeaders } from '@/lib/security-headers'
 import { assertEnvOnce } from '@/lib/env-validate'
 import { createDb } from '@/db/client'
 import { runCleanup } from '@/features/maintenance/cleanup'
+import { redirectToCanonicalHost } from '@/lib/canonical-redirect'
 
 const fetchHandler = (
   entry as { fetch: (request: Request, env: Cloudflare.Env, ctx: ExecutionContext) => Promise<Response> }
@@ -21,6 +22,8 @@ const fetchHandler = (
 
 const handler = {
   async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext): Promise<Response> {
+    const canonicalRedirect = redirectToCanonicalHost(request, env.BETTER_AUTH_URL)
+    if (canonicalRedirect) return withSecurityHeaders(canonicalRedirect)
     await assertEnvOnce()
     const response = await fetchHandler(request, env, ctx)
     return withSecurityHeaders(response)

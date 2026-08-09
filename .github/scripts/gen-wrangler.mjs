@@ -37,9 +37,10 @@ prod = prod
   .replace('00000000000000000000000000000000', CF_PROD_KV_ID)
 
 if (CF_PROD_DOMAIN) {
+  const domain = CF_PROD_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '')
   prod = prod.replace(
     '"name": "flarestarter-production",',
-    `"name": "flarestarter-production",\n\t\t\t"routes": [{ "pattern": "${CF_PROD_DOMAIN}", "custom_domain": true }],`,
+    `"name": "flarestarter-production",\n\t\t\t"routes": [\n\t\t\t\t{ "pattern": "${domain}", "custom_domain": true },\n\t\t\t\t{ "pattern": "www.${domain}/*", "zone_name": "${domain}" }\n\t\t\t],`,
   )
 }
 

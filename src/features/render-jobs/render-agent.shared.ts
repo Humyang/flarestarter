@@ -9,6 +9,8 @@ export interface RenderAgentClaim {
   id: string
   claimToken: string
   leaseExpiresAt: string
+  agentAttemptCount: number
+  rendererTaskId: string | null
   title: string
   subtitle: {
     translationLanguage: string

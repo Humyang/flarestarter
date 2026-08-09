@@ -154,7 +154,7 @@ drizzle/           # generated SQL migrations (repo root, sibling of src/)
 
 See [`.dev.vars.example`](.dev.vars.example) for the full list. Locally everything is optional and degrades gracefully. For production, the required secrets and how to set them are documented in [deploy](https://flarestarter.com/docs/getting-started/deploy):
 
-- `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (also drives canonical/sitemap origin) — **required**; validated at startup ([security](https://flarestarter.com/docs/platform/security))
+- `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (also drives canonical/sitemap origin) — **required**; `BETTER_AUTH_TRUSTED_ORIGINS` optionally allows explicit LAN/preview origins; validated at startup ([security](https://flarestarter.com/docs/platform/security))
 - `RESEND_API_KEY`, `EMAIL_FROM` (email; blank → console-captured)
 - `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_CLIENT_ID/SECRET` (optional social login)
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO_*` (billing); `STRIPE_WECHAT_PAY_ENABLED` (optional — set `false` to turn off WeChat Pay on the sponsor page)

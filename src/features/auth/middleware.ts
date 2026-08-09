@@ -31,6 +31,11 @@ export const getEnabledSocialProviders = createServerFn({ method: 'GET' }).handl
   return out
 })
 
+/** Whether new accounts must confirm ownership before they can sign in. */
+export const getEmailVerificationRequired = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<boolean> => Boolean(env.RESEND_API_KEY),
+)
+
 /** Public Turnstile site key for the auth forms, or null when bot protection is off. */
 export const getTurnstileSiteKey = createServerFn({ method: 'GET' }).handler(
   async (): Promise<string | null> => env.TURNSTILE_SITE_KEY || null,

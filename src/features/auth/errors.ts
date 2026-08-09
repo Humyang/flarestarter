@@ -7,6 +7,7 @@ export function mapAuthError(
     INVALID_EMAIL_OR_PASSWORD: 'auth.errors.invalidCredentials',
     USER_ALREADY_EXISTS: 'auth.errors.emailExists',
     EMAIL_NOT_VERIFIED: 'auth.errors.emailNotVerified',
+    INVALID_ORIGIN: 'auth.errors.invalidOrigin',
     INVALID_TOKEN: 'auth.errors.invalidToken',
     PASSWORD_TOO_SHORT: 'auth.errors.weakPassword',
     PASSWORD_TOO_LONG: 'auth.errors.weakPassword',

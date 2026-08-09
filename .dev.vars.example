@@ -1,6 +1,9 @@
 # Better-Auth
 BETTER_AUTH_SECRET=replace-with-32+char-random-string
 BETTER_AUTH_URL=http://localhost:3000
+# Optional comma-separated origins for other devices accessing this dev server.
+# Example: http://192.168.1.26:3000 (keep BETTER_AUTH_URL canonical).
+BETTER_AUTH_TRUSTED_ORIGINS=
 # Email (Resend) — blank keeps mail local: captured to the console, never sent
 RESEND_API_KEY=
 EMAIL_FROM=FlareStarter <onboarding@resend.dev>
