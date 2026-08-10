@@ -3,6 +3,8 @@ import { isLocale, defaultLocale } from '@/features/i18n/locale'
 import { getPreferences } from '@/server/preferences'
 import { getOptionalUser } from '@/features/auth/middleware'
 import { getAnalyticsToken } from '@/features/analytics/analytics'
+import { AnalyticsTracker } from '@/features/analytics/components'
+import { GA4_MEASUREMENT_ID } from '@/features/analytics/ga4'
 import { Toaster } from '@/components/ui/sonner'
 import { useResolvedTheme } from '@/features/theme/use-resolved-theme'
 import appCss from '@/styles/app.css?url'
@@ -12,10 +14,10 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Smart Clip — AI video repurposing' },
-      { name: 'description', content: 'Turn long videos into ready-to-review short clips with Smart Clip.' },
+      { title: 'Smart Clip — MP4 subtitle rendering and translation' },
+      { name: 'description', content: 'Upload an MP4, choose a subtitle style and language, track the render, and download the completed video.' },
       { property: 'og:title', content: 'Smart Clip' },
-      { property: 'og:description', content: 'AI video repurposing with a human finish.' },
+      { property: 'og:description', content: 'MP4 subtitle rendering and translation with a visible render queue.' },
       { property: 'og:type', content: 'website' },
     ],
     links: [
@@ -49,8 +51,10 @@ export const Route = createRootRoute({
  * there is no flash. It deliberately does NOT write a cookie: visitors keep
  * following their system until they click the toggle (which does write one). */
 const THEME_BOOT_SCRIPT = `(function(){try{if(!/(?:^|;\\s*)theme=/.test(document.cookie)&&matchMedia('(prefers-color-scheme: light)').matches){document.documentElement.classList.replace('dark','light')}}catch(e){}})()`
-const GOOGLE_ANALYTICS_ID = 'G-QEKHDPCR27'
-const GOOGLE_ANALYTICS_BOOT_SCRIPT = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${GOOGLE_ANALYTICS_ID}');`
+// Set a query-safe page context before loading GA. Enhanced Measurement can
+// emit automatic events independently of our wrapper, and otherwise those
+// events inherit the raw browser URL (including auth tokens or contact data).
+const GOOGLE_ANALYTICS_BOOT_SCRIPT = `(function(){window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments)};var safeUrl=window.location.origin+window.location.pathname;try{var current=new URL(window.location.href);var safe=new URL(current.origin+current.pathname);['utm_source','utm_medium','utm_campaign','utm_content'].forEach(function(key){var value=current.searchParams.get(key);if(!value)return;value=value.normalize('NFKC').toLowerCase().trim();var compact=value.replace(/[^0-9+]/g,'');if(value.indexOf('@')!==-1||(compact.length>=9&&/^[+]?[0-9]+$/.test(compact)))return;value=value.replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,64);if(value)safe.searchParams.set(key,value)});safeUrl=safe.toString()}catch(e){}var safeReferrer='';try{if(document.referrer){var referrer=new URL(document.referrer);safeReferrer=referrer.origin}}catch(e){}window.gtag('js',new Date());window.gtag('set','page_location',safeUrl);if(safeReferrer)window.gtag('set','page_referrer',safeReferrer);window.gtag('config','${GA4_MEASUREMENT_ID}',{send_page_view:false,page_location:safeUrl,page_referrer:safeReferrer})})()`
 
 function RootComponent() {
   const { theme, analyticsToken } = Route.useLoaderData()
@@ -67,11 +71,12 @@ function RootComponent() {
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <HeadContent />
-        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`} />
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA4_MEASUREMENT_ID}`} />
         <script dangerouslySetInnerHTML={{ __html: GOOGLE_ANALYTICS_BOOT_SCRIPT }} />
       </head>
       <body>
         <Outlet />
+        <AnalyticsTracker />
         <Scripts />
         <Toaster theme={resolvedTheme} />
         {/* Cloudflare Web Analytics — only when a beacon token is configured. */}

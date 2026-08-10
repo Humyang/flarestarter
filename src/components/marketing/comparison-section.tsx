@@ -1,13 +1,11 @@
-import { ArrowRight, Film, Sparkles } from 'lucide-react'
+import { Play, ShieldCheck } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { buttonVariants } from '@/components/ui/button'
 import { useTranslation } from '@/features/i18n/provider'
+import { trackMarketingCta } from '@/features/analytics/marketing'
 
-const IMAGE_SLOTS = [
-  { key: 'source', src: '/comparison/original-video-placeholder.jpg', tone: 'comparison-media--source' },
-  { key: 'rendered', src: '/comparison/rendered-clip-placeholder.jpg', tone: 'comparison-media--rendered' },
-] as const
-
-export function ComparisonSection() {
-  const { t } = useTranslation()
+export function ComparisonSection({ loggedIn = false }: { loggedIn?: boolean }) {
+  const { t, locale } = useTranslation()
 
   return (
     <section className="border-t border-border px-5 py-14 md:px-7 md:py-20" id="comparison">
@@ -17,25 +15,56 @@ export function ComparisonSection() {
           <h2 className="m-0 mt-2.5 font-display text-[30px] font-semibold tracking-[-.8px]">{t('comparison.title')}</h2>
           <p className="m-0 mt-3 max-w-[44em] text-[15px] leading-relaxed text-fg-2">{t('comparison.body')}</p>
         </div>
-        <span className="flex items-center gap-1.5 font-mono text-[11px] text-fg-3"><Sparkles size={14} className="text-primary" /> {t('comparison.note')}</span>
+        <span className="flex items-center gap-1.5 font-mono text-[11px] text-fg-3"><ShieldCheck size={14} className="text-success" /> {t('comparison.note')}</span>
       </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
-        {IMAGE_SLOTS.flatMap(({ key, src, tone }, index) => [
-          <figure key={key} className="m-0 min-w-0">
-            <div className={`comparison-media ${tone}`}>
-              <div className="comparison-media__placeholder" aria-hidden="true">
-                <Film size={25} />
-                <span>{t(`comparison.${key}Placeholder`)}</span>
-                <code>{src}</code>
-              </div>
-              <img src={src} alt={t(`comparison.${key}Alt`)} onError={(event) => { event.currentTarget.style.display = 'none' }} />
-              <span className="comparison-media__label">0{index + 1} · {t(`comparison.${key}Label`)}</span>
-            </div>
-            <figcaption className="mt-3 text-sm leading-relaxed text-fg-2">{t(`comparison.${key}Caption`)}</figcaption>
-          </figure>
-          , ...(index === 0 ? [<span key="comparison-arrow" className="hidden items-center justify-center md:flex" aria-hidden="true"><ArrowRight size={22} className="text-primary" /></span>] : []),
-        ])}
+      <div className="mt-8 overflow-hidden border border-border bg-inset">
+        <video
+          className="aspect-video w-full bg-[#0b0d12] object-contain"
+          controls
+          preload="metadata"
+          poster="/product-demo/smart-clip-product-demo-poster.jpg"
+          playsInline
+          aria-label={t('comparison.videoLabel')}
+        >
+          <source src="/product-demo/smart-clip-product-demo-16x9.mp4" type="video/mp4" />
+          <track
+            kind="captions"
+            src="/product-demo/smart-clip-product-demo-16x9.en.vtt"
+            srcLang="en"
+            label="English"
+            default={locale === 'en'}
+          />
+          <track
+            kind="captions"
+            src="/product-demo/smart-clip-product-demo-16x9.zh.vtt"
+            srcLang="zh"
+            label="中文"
+            default={locale === 'zh'}
+          />
+          {t('comparison.videoFallback')}
+        </video>
+        <div className="flex flex-col gap-3 border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p className="m-0 max-w-[48em] text-sm leading-relaxed text-fg-2">{t('comparison.caption')}</p>
+          {loggedIn ? (
+            <Link
+              to="/{-$locale}/app/render"
+              onClick={() => trackMarketingCta({ ctaId: 'demo_render', placement: 'demo', locale, destination: '/app/render' })}
+              className={buttonVariants({ size: 'sm', className: 'shrink-0' })}
+            >
+              <Play size={15} aria-hidden="true" /> {t('comparison.cta')}
+            </Link>
+          ) : (
+            <Link
+              to="/{-$locale}/register"
+              search={{ next: '/app/render' }}
+              onClick={() => trackMarketingCta({ ctaId: 'demo_register', placement: 'demo', locale, destination: '/register' })}
+              className={buttonVariants({ size: 'sm', className: 'shrink-0' })}
+            >
+              <Play size={15} aria-hidden="true" /> {t('comparison.cta')}
+            </Link>
+          )}
+        </div>
       </div>
     </section>
   )

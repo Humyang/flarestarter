@@ -29,7 +29,7 @@ export function LangSwitch() {
       type="button"
       onClick={() => switchTo(next)}
       aria-label={t('common.language')}
-      className="inline-flex h-[38px] items-center gap-1.5 rounded-lg border border-transparent px-2.5 text-sm font-semibold text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground"
+      className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-transparent px-2.5 text-sm font-semibold text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:h-[38px]"
     >
       <Globe size={17} />
       <span>{locale === 'zh' ? '中文' : 'EN'}</span>

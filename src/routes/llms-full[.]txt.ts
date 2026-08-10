@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getLLMFullText } from '@/features/docs/llm'
+import { buildLlmsFullText } from '@/features/seo/seo'
 
-// `/llms-full.txt` — every docs page concatenated as plain Markdown, so an LLM
-// can ingest the whole documentation in one request.
-const handler = () =>
-  new Response(getLLMFullText(), {
+const handler = async () => {
+  const { env } = await import('@/lib/env')
+  return new Response(buildLlmsFullText(new URL(env.BETTER_AUTH_URL).origin), {
     headers: { 'content-type': 'text/markdown; charset=utf-8' },
   })
+}
 
 export const Route = createFileRoute('/llms-full.txt')({
   server: { handlers: { GET: handler } },

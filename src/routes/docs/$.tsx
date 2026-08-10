@@ -95,6 +95,7 @@ export const Route = createFileRoute('/docs/$')({
     return {
       meta: [
         { title },
+        { name: 'robots', content: 'noindex,follow' },
         { property: 'og:title', content: title },
         ...(loaderData?.description
           ? [

@@ -1,5 +1,12 @@
 import { test, expect } from 'vitest'
-import { buildRobots, buildSitemap, localeHead } from '@/features/seo/seo'
+import {
+  buildHomepageJsonLd,
+  buildLlmsFullText,
+  buildLlmsIndex,
+  buildRobots,
+  buildSitemap,
+  localeHead,
+} from '@/features/seo/seo'
 import { localizePath } from '@/features/i18n/locale'
 
 const origin = 'https://app.example.com'
@@ -28,19 +35,17 @@ test('sitemap lists both locales of the customer homepage with hreflang', () => 
   expect(xml).toContain('hreflang="en"')
   expect(xml).toContain('hreflang="zh"')
   expect(xml).toContain('hreflang="x-default"')
-  expect(xml).not.toContain(`${origin}/pricing`)
+  expect(xml).toContain(`<loc>${origin}/pricing</loc>`)
+  expect(xml).toContain(`<loc>${origin}/zh/pricing</loc>`)
   expect(xml).not.toContain(`${origin}/changelog`)
   expect(xml).not.toContain(`${origin}/sponsor`)
   expect(xml).not.toContain(`${origin}/waitlist`)
   expect(xml).not.toContain(`${origin}/status`)
 })
 
-test('sitemap includes single-locale docs paths without hreflang alternates', () => {
+test('sitemap ignores legacy docs paths even when a caller supplies them', () => {
   const xml = buildSitemap(origin, ['/docs', '/docs/install'])
-  // exact <url> block match — alternates would sit between </loc> and </url>
-  expect(xml).toContain(`<url><loc>${origin}/docs</loc></url>`)
-  expect(xml).toContain(`<url><loc>${origin}/docs/install</loc></url>`)
-  // no zh-prefixed docs URL, and no alternate hreflang for docs
+  expect(xml).not.toContain(`${origin}/docs`)
   expect(xml).not.toContain(`${origin}/zh/docs`)
 })
 
@@ -52,4 +57,26 @@ test('localeHead: canonical + hreflang alternates + og', () => {
   expect(head.links.some((l) => l.hrefLang === 'x-default')).toBe(true)
   expect(head.meta.some((m) => m.title === 'T')).toBe(true)
   expect(head.meta.some((m) => m.property === 'og:url' && m.content === `${origin}/zh/pricing`)).toBe(true)
+  expect(head.meta.some((m) => m.property === 'og:image' && m.content === `${origin}/og/smart-clip.png`)).toBe(true)
+  expect(head.meta.some((m) => m.property === 'og:image:width' && m.content === '1200')).toBe(true)
+  expect(head.meta.some((m) => m.property === 'og:image:height' && m.content === '630')).toBe(true)
+  expect(head.meta.some((m) => m.name === 'twitter:image' && m.content === `${origin}/og/smart-clip.png`)).toBe(true)
+})
+
+test('homepage JSON-LD contains only verified product facts', () => {
+  const jsonLd = buildHomepageJsonLd({ origin, locale: 'en' })
+  expect(jsonLd['@context']).toBe('https://schema.org')
+  expect(jsonLd['@graph']).toHaveLength(3)
+  const software = jsonLd['@graph'].find((entry) => entry['@type'] === 'SoftwareApplication')
+  expect(software).toBeDefined()
+  expect(software).not.toHaveProperty('offers')
+  expect(JSON.stringify(jsonLd)).not.toMatch(/aggregateRating|review|InStock|199|499/i)
+})
+
+test('llms pages expose product facts, not template internals', () => {
+  const index = buildLlmsIndex(origin)
+  const full = buildLlmsFullText(origin)
+  expect(index).toContain('MP4 files up to 100 MB')
+  expect(full).toContain('Retry a failed task')
+  expect(`${index}\n${full}`).not.toMatch(/fork|wrangler|D1|environment variable|deploy/i)
 })

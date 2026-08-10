@@ -31,7 +31,7 @@ export const Route = createFileRoute('/{-$locale}/waitlist')({
       title: `${dict} — Smart Clip`,
       description: locale === 'zh' ? '我们一上线就第一时间通知你。' : "We'll let you know the moment we launch.",
     })
-    return { meta, links }
+    return { meta: [...meta, { name: 'robots', content: 'noindex,follow' }], links }
   },
   component: WaitlistPage,
 })
@@ -54,7 +54,7 @@ function WaitlistPage() {
           </CardContent>
         </Card>
       </main>
-      <Footer theme={theme} />
+      <Footer theme={theme} loggedIn={loggedIn} />
     </div>
   )
 }

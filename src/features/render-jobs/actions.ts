@@ -9,6 +9,19 @@ async function currentUser() {
   return user
 }
 
+export async function runRenderSubmission(
+  submit: () => Promise<void>,
+  markFailed: (message: string) => Promise<void>,
+): Promise<boolean> {
+  try {
+    await submit()
+    return true
+  } catch (error) {
+    await markFailed(error instanceof Error ? error.message : String(error))
+    return false
+  }
+}
+
 export const listRenderJobsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<RenderJobView[]> => {
   const { createDb } = await import('@/db/client')
   const { env } = await import('@/lib/env')
@@ -49,7 +62,7 @@ export const createRenderJobFn = createServerFn({ method: 'POST' })
       title, fileName: file.name.slice(0, 255), contentType: file.type,
       sizeBytes: file.size, subtitle, now: Date.now(),
     })
-    try {
+    const submitted = await runRenderSubmission(async () => {
       await env.BUCKET.put(record.objectKey, await file.arrayBuffer(), {
         httpMetadata: { contentType: file.type },
       })
@@ -73,11 +86,12 @@ export const createRenderJobFn = createServerFn({ method: 'POST' })
           status: 'queued', phase: 'awaiting-agent', error: null,
         }, Date.now())
       }
-    } catch (error) {
+    }, async (message) => {
       await updateOwnedRenderJob(db, scope, record.jobId, {
-        status: 'failed', phase: 'submit', error: error instanceof Error ? error.message : String(error),
+        status: 'failed', phase: 'submit', error: message,
       }, Date.now())
-    }
+    })
+    if (!submitted) return { ok: false, reason: 'smartClip' }
     const jobs = await listRenderJobs(db, scope)
     return { ok: true, job: jobs.find((job) => job.id === record.jobId)! }
   })

@@ -28,8 +28,8 @@ export const Route = createFileRoute('/{-$locale}/pricing')({
       title: locale === 'zh' ? '版本 — Smart Clip' : 'Plans — Smart Clip',
       description:
         locale === 'zh'
-          ? 'Smart Clip 免费版正在受控开放。Pro 将为持续发布的创作者提供更多项目、成片和团队审核空间。'
-          : 'Smart Clip is in controlled free beta. Pro will add more projects, exports, and team review space.',
+          ? 'Smart Clip 免费版正在受控开放。Pro 仍在规划，功能与价格尚未公布。'
+          : 'Smart Clip is in controlled free beta. Pro is still planned; its features and pricing have not been published.',
     })
     return { meta, links }
   },
@@ -42,8 +42,8 @@ function Pricing() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SiteNav theme={theme} loggedIn={loggedIn} />
-      <PricingTable turnstileSiteKey={turnstileSiteKey} />
-      <Footer theme={theme} />
+      <PricingTable turnstileSiteKey={turnstileSiteKey} loggedIn={loggedIn} />
+      <Footer theme={theme} loggedIn={loggedIn} />
     </div>
   )
 }

@@ -7,21 +7,23 @@ import { localizePath } from '@/features/i18n/locale'
 import { authPageHead } from '@/features/auth/head'
 import { AuthCard, Field } from '@/features/auth/components/auth-card'
 import { Button } from '@/components/ui/button'
+import { authDestination, validateAuthSearch } from '@/features/auth/middleware'
 
 export const Route = createFileRoute('/{-$locale}/(auth)/verify-email')({
   head: ({ params }) => authPageHead(params, 'verifyTitle'),
+  validateSearch: validateAuthSearch,
   component: Verify,
 })
 
 function Verify() {
+  const { next } = Route.useSearch()
   const { t, locale } = useTranslation()
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
 
   async function resend(e: React.FormEvent) {
     e.preventDefault()
-    // 带 locale 前缀：zh 用户验证完落 /zh/app（/app 会按 locale 组渲染对应语言）
-    await sendVerificationEmail({ email, callbackURL: localizePath(locale, '/app') })
+    await sendVerificationEmail({ email, callbackURL: localizePath(locale, authDestination(next)) })
     setSent(true)
   }
 

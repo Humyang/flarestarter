@@ -12,7 +12,12 @@ export const Route = createFileRoute('/{-$locale}/app/')({
   }),
   head: () => ({ meta: [{ name: 'robots', content: 'noindex' }] }),
   loader: async ({ params }) => {
-    const [user, ent] = await Promise.all([requireUser({ data: { locale: (params as { locale?: string }).locale } }), getEntitlement()])
+    const user = await requireUser({ data: {
+      locale: (params as { locale?: string }).locale,
+      next: '/app',
+      entry: 'login',
+    } })
+    const ent = await getEntitlement()
     return { user, ent }
   },
   component: AppHome,

@@ -15,7 +15,13 @@ function GoogleIcon() {
   )
 }
 
-export function SocialButtons({ providers }: { providers: Array<'google' | 'github'> }) {
+export function SocialButtons({
+  providers,
+  callbackURL,
+}: {
+  providers: Array<'google' | 'github'>
+  callbackURL: string
+}) {
   const { t } = useTranslation()
   if (providers.length === 0) return null
   return (
@@ -27,7 +33,7 @@ export function SocialButtons({ providers }: { providers: Array<'google' | 'gith
             key={p}
             type="button"
             className="social-btn"
-            onClick={() => signIn.social({ provider: p, callbackURL: '/app' })}
+            onClick={() => signIn.social({ provider: p, callbackURL })}
           >
             {p === 'google' ? <GoogleIcon /> : <Github size={17} />}
             {t('auth.continueWith', { provider: LABELS[p] })}

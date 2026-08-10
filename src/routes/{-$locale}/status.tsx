@@ -26,7 +26,7 @@ export const Route = createFileRoute('/{-$locale}/status')({
           ? '查看 Smart Clip 公开服务状态、维护窗口和故障公告。'
           : 'Check Smart Clip service health, maintenance windows, and incident updates.',
     })
-    return { meta, links }
+    return { meta: [...meta, { name: 'robots', content: 'noindex,follow' }], links }
   },
   component: StatusPage,
 })
@@ -130,7 +130,7 @@ function StatusPage() {
           </div>
         </section>
       </main>
-      <Footer theme={theme} />
+      <Footer theme={theme} loggedIn={!!user} />
     </div>
   )
 }

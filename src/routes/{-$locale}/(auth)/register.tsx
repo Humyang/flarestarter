@@ -3,9 +3,11 @@ import { useState } from 'react'
 import { User, Mail, Lock } from 'lucide-react'
 import { signUp } from '@/features/auth/auth.client'
 import {
+  authDestination,
   getEmailVerificationRequired,
   getEnabledSocialProviders,
   getTurnstileSiteKey,
+  validateAuthSearch,
 } from '@/features/auth/middleware'
 import { mapAuthError } from '@/features/auth/errors'
 import { useTurnstile, captchaHeaders } from '@/features/auth/components/turnstile'
@@ -14,9 +16,34 @@ import { authPageHead } from '@/features/auth/head'
 import { AuthCard, Field } from '@/features/auth/components/auth-card'
 import { SocialButtons } from '@/features/auth/components/social-buttons'
 import { Button } from '@/components/ui/button'
+import { localizePath } from '@/features/i18n/locale'
+import { trackEvent } from '@/features/analytics/ga4'
+
+const SIGN_UP_START_KEY = 'smart_clip:ga4:sign_up_start:v1'
+const SIGN_UP_KEY = 'smart_clip:ga4:sign_up:v1'
+
+function trackAuthEventOnce(key: string, locale: 'en' | 'zh', eventName: 'sign_up_start' | 'sign_up') {
+  if (typeof window === 'undefined') return
+
+  let storage: Storage | undefined
+  try {
+    storage = window.sessionStorage
+    if (storage.getItem(key) === '1') return
+  } catch {
+    storage = undefined
+  }
+
+  if (!trackEvent(eventName, { locale, method: 'email' })) return
+  try {
+    storage?.setItem(key, '1')
+  } catch {
+    // Analytics must not interrupt account creation when storage is unavailable.
+  }
+}
 
 export const Route = createFileRoute('/{-$locale}/(auth)/register')({
   head: ({ params }) => authPageHead(params, 'registerTitle'),
+  validateSearch: validateAuthSearch,
   loader: async () => {
     const [providers, turnstileSiteKey, emailVerificationRequired] = await Promise.all([
       getEnabledSocialProviders(),
@@ -30,7 +57,8 @@ export const Route = createFileRoute('/{-$locale}/(auth)/register')({
 
 function Register() {
   const { providers, turnstileSiteKey, emailVerificationRequired } = Route.useLoaderData()
-  const { t } = useTranslation()
+  const { next } = Route.useSearch()
+  const { t, locale } = useTranslation()
   const router = useRouter()
   const { token, enabled, widget, reset } = useTurnstile(turnstileSiteKey)
   const [name, setName] = useState('')
@@ -43,26 +71,36 @@ function Register() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    trackAuthEventOnce(SIGN_UP_START_KEY, locale, 'sign_up_start')
     setBusy(true)
     setError(null)
-    const res = await signUp.email({ email, password, name }, captchaHeaders(token))
+    const destination = authDestination(next)
+    const res = await signUp.email({
+      email,
+      password,
+      name,
+      callbackURL: localizePath(locale, destination),
+    }, captchaHeaders(token))
     setBusy(false)
     if (res.error) {
       setError(t(mapAuthError(res.error)))
       reset() // tokens are single-use
       return
     }
+    trackAuthEventOnce(SIGN_UP_KEY, locale, 'sign_up')
     if (emailVerificationRequired) {
       setSent(true)
       return
     }
-    await router.navigate({ to: '/{-$locale}/app' })
+    await router.navigate(destination === '/app/render'
+      ? { to: '/{-$locale}/app/render' }
+      : { to: '/{-$locale}/app' })
   }
 
   if (sent) {
     return (
       <AuthCard title={t('auth.verifyTitle')} subtitle={t('auth.verifySent')}>
-        <Link to="/{-$locale}/verify-email" className="font-semibold text-primary">
+        <Link to="/{-$locale}/verify-email" search={{ next }} className="font-semibold text-primary">
           {t('auth.resendVerification')}
         </Link>
       </AuthCard>
@@ -100,10 +138,10 @@ function Register() {
           {t('auth.register')}
         </Button>
       </form>
-      <SocialButtons providers={providers} />
+      <SocialButtons providers={providers} callbackURL={localizePath(locale, authDestination(next))} />
       <p className="mt-5 text-center text-sm text-fg-2">
         {t('auth.haveAccount')}{' '}
-        <Link to="/{-$locale}/login" className="font-semibold text-primary">
+        <Link to="/{-$locale}/login" search={{ next }} className="font-semibold text-primary">
           {t('auth.login')}
         </Link>
       </p>

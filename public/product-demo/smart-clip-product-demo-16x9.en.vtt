@@ -1,0 +1,13 @@
+WEBVTT
+
+00:00.000 --> 00:03.000
+Smart Clip: a synthetic interface demo with no customer or third-party media.
+
+00:03.000 --> 00:09.000
+Upload an MP4 up to 100 MB and choose a subtitle style and language.
+
+00:09.000 --> 00:15.000
+Follow the render status, retry a failure, and download the completed MP4.
+
+00:15.000 --> 00:20.000
+The screen uses simulated data and omits actual processing wait; no fixed duration is implied.

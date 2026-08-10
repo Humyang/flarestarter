@@ -2,10 +2,16 @@ import { createFileRoute, useRouter, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Mail, Lock } from 'lucide-react'
 import { signIn } from '@/features/auth/auth.client'
-import { getEnabledSocialProviders, getTurnstileSiteKey } from '@/features/auth/middleware'
+import {
+  authDestination,
+  getEnabledSocialProviders,
+  getTurnstileSiteKey,
+  validateAuthSearch,
+} from '@/features/auth/middleware'
 import { mapAuthError } from '@/features/auth/errors'
 import { useTurnstile, captchaHeaders } from '@/features/auth/components/turnstile'
 import { useTranslation } from '@/features/i18n/provider'
+import { localizePath } from '@/features/i18n/locale'
 import { authPageHead } from '@/features/auth/head'
 import { AuthCard, Field } from '@/features/auth/components/auth-card'
 import { SocialButtons } from '@/features/auth/components/social-buttons'
@@ -13,6 +19,7 @@ import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/{-$locale}/(auth)/login')({
   head: ({ params }) => authPageHead(params, 'loginTitle'),
+  validateSearch: validateAuthSearch,
   loader: async () => {
     const [providers, turnstileSiteKey] = await Promise.all([
       getEnabledSocialProviders(),
@@ -25,7 +32,8 @@ export const Route = createFileRoute('/{-$locale}/(auth)/login')({
 
 function Login() {
   const { providers, turnstileSiteKey } = Route.useLoaderData()
-  const { t } = useTranslation()
+  const { next } = Route.useSearch()
+  const { t, locale } = useTranslation()
   const router = useRouter()
   const { token, enabled, widget, reset } = useTurnstile(turnstileSiteKey)
   const [email, setEmail] = useState('')
@@ -44,7 +52,10 @@ function Login() {
       reset() // tokens are single-use
       return
     }
-    router.navigate({ to: '/{-$locale}/app' })
+    const destination = authDestination(next)
+    await router.navigate(destination === '/app/render'
+      ? { to: '/{-$locale}/app/render' }
+      : { to: '/{-$locale}/app' })
   }
 
   return (
@@ -67,10 +78,10 @@ function Login() {
           {t('auth.login')}
         </Button>
       </form>
-      <SocialButtons providers={providers} />
+      <SocialButtons providers={providers} callbackURL={localizePath(locale, authDestination(next))} />
       <p className="mt-5 text-center text-sm text-fg-2">
         {t('auth.noAccount')}{' '}
-        <Link to="/{-$locale}/register" className="font-semibold text-primary">
+        <Link to="/{-$locale}/register" search={{ next }} className="font-semibold text-primary">
           {t('auth.register')}
         </Link>
       </p>

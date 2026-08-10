@@ -35,7 +35,7 @@ export const Route = createFileRoute('/{-$locale}/sponsor')({
           ? '赞助这个开源项目，一次性或按月均可。'
           : 'Sponsor this open-source project. One-time or monthly.',
     })
-    return { meta, links }
+    return { meta: [...meta, { name: 'robots', content: 'noindex,follow' }], links }
   },
   component: SponsorPage,
 })
@@ -97,7 +97,7 @@ function SponsorPage() {
         )}
         <SponsorsWall sponsors={sponsors} />
       </main>
-      <Footer theme={theme} />
+      <Footer theme={theme} loggedIn={!!user} />
     </div>
   )
 }

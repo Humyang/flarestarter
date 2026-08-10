@@ -6,10 +6,11 @@ import { buttonVariants } from '@/components/ui/button'
 import { ThemeToggle } from '@/features/theme/theme-toggle'
 import { LangSwitch } from '@/features/i18n/lang-switch'
 import { useTranslation } from '@/features/i18n/provider'
+import { trackMarketingCta } from '@/features/analytics/marketing'
 
 /** Sticky Smart Clip header. Links + CTA collapse into a hamburger menu on mobile. */
-export function SiteNav({ theme }: { theme: 'light' | 'dark'; loggedIn?: boolean }) {
-  const { t } = useTranslation()
+export function SiteNav({ theme, loggedIn = false }: { theme: 'light' | 'dark'; loggedIn?: boolean }) {
+  const { t, locale } = useTranslation()
   const [open, setOpen] = React.useState(false)
 
   const navLinks = (
@@ -17,10 +18,15 @@ export function SiteNav({ theme }: { theme: 'light' | 'dark'; loggedIn?: boolean
       <Link to="/{-$locale}" hash="render-workflow" className="rounded-md px-2 py-3 text-sm font-medium text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:py-2">
         {t('marketing.navFeatures')}
       </Link>
+      <Link to="/{-$locale}/pricing" className="rounded-md px-2 py-3 text-sm font-medium text-fg-2 transition-colors hover:bg-bg-alt hover:text-foreground md:py-2">
+        {t('marketing.navPricing')}
+      </Link>
     </>
   )
 
-  const cta = <Link to="/{-$locale}/app/render" className={buttonVariants({ size: 'sm' })}>{t('marketing.heroCtaPrimary')}</Link>
+  const cta = loggedIn
+    ? <Link to="/{-$locale}/app/render" onClick={() => trackMarketingCta({ ctaId: 'nav_render', placement: 'site_nav', locale, destination: '/app/render' })} className={buttonVariants({ size: 'sm', className: 'min-h-11 md:min-h-0' })}>{t('marketing.heroCtaPrimary')}</Link>
+    : <Link to="/{-$locale}/register" search={{ next: '/app/render' }} onClick={() => trackMarketingCta({ ctaId: 'nav_register', placement: 'site_nav', locale, destination: '/register' })} className={buttonVariants({ size: 'sm', className: 'min-h-11 md:min-h-0' })}>{t('marketing.heroCtaPrimary')}</Link>
 
   return (
     <header
@@ -44,7 +50,7 @@ export function SiteNav({ theme }: { theme: 'light' | 'dark'; loggedIn?: boolean
         {/* mobile hamburger */}
         <button
           type="button"
-          className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg text-fg-2 hover:bg-bg-alt hover:text-foreground md:hidden"
+          className="inline-flex h-12 w-12 items-center justify-center rounded-lg text-fg-2 hover:bg-bg-alt hover:text-foreground md:hidden"
           aria-label="Menu"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}

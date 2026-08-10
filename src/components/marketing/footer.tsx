@@ -3,9 +3,10 @@ import { useTranslation } from '@/features/i18n/provider'
 import { Logo } from '@/components/brand/logo'
 import { ThemeToggle } from '@/features/theme/theme-toggle'
 import { LangSwitch } from '@/features/i18n/lang-switch'
+import { trackMarketingCta } from '@/features/analytics/marketing'
 
-export function Footer({ theme }: { theme: 'light' | 'dark' }) {
-  const { t } = useTranslation()
+export function Footer({ theme, loggedIn = false }: { theme: 'light' | 'dark'; loggedIn?: boolean }) {
+  const { t, locale } = useTranslation()
   const year = new Date().getFullYear()
 
   return (
@@ -21,7 +22,25 @@ export function Footer({ theme }: { theme: 'light' | 'dark' }) {
 
         {/* Product */}
         <FooterCol title={t('marketing.footerProduct')}>
-          <Link className="foot-link" to="/{-$locale}/app/render">{t('marketing.heroCtaPrimary')}</Link>
+          <Link className="foot-link" to="/{-$locale}/pricing">{t('marketing.footerPricing')}</Link>
+          {loggedIn ? (
+            <Link
+              className="foot-link"
+              to="/{-$locale}/app/render"
+              onClick={() => trackMarketingCta({ ctaId: 'footer_render', placement: 'footer', locale, destination: '/app/render' })}
+            >
+              {t('marketing.heroCtaPrimary')}
+            </Link>
+          ) : (
+            <Link
+              className="foot-link"
+              to="/{-$locale}/register"
+              search={{ next: '/app/render' }}
+              onClick={() => trackMarketingCta({ ctaId: 'footer_register', placement: 'footer', locale, destination: '/register' })}
+            >
+              {t('marketing.heroCtaPrimary')}
+            </Link>
+          )}
         </FooterCol>
 
         {/* Legal */}

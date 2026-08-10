@@ -53,7 +53,7 @@ export const Route = createFileRoute('/{-$locale}/changelog')({
       title: `${dict.changelog.title} — Smart Clip`,
       description: dict.changelog.subtitle,
     })
-    return { meta, links }
+    return { meta: [...meta, { name: 'robots', content: 'noindex,follow' }], links }
   },
   component: Changelog,
 })
@@ -91,7 +91,7 @@ function Changelog() {
           ))}
         </div>
       </main>
-      <Footer theme={theme} />
+      <Footer theme={theme} loggedIn={loggedIn} />
     </div>
   )
 }

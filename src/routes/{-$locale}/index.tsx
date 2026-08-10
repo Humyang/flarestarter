@@ -1,5 +1,5 @@
 import { createFileRoute, getRouteApi } from '@tanstack/react-router'
-import { localeHead } from '@/features/seo/seo'
+import { buildHomepageJsonLd, localeHead } from '@/features/seo/seo'
 import { getOrigin } from '@/features/seo/seo.fns'
 import type { Locale } from '@/features/i18n/locale'
 import { SiteNav } from '@/components/marketing/site-nav'
@@ -23,13 +23,22 @@ export const Route = createFileRoute('/{-$locale}/')({
       origin,
       locale,
       path: '/',
-      title: 'Smart Clip',
+      title: locale === 'zh' ? 'MP4 字幕渲染与翻译 — Smart Clip' : 'MP4 Subtitle Rendering and Translation — Smart Clip',
       description:
         locale === 'zh'
-          ? 'Smart Clip——把长视频变成值得发布的短视频片段，AI 处理重复工作，最终判断留给你。'
-          : 'Smart Clip — turn long videos into ready-to-review short clips with a human finish.',
+          ? '上传 MP4，选择字幕样式和语言，跟踪渲染状态并下载 Smart Clip 成片。'
+          : 'Upload an MP4, choose a subtitle style and language, track the render, and download the finished Smart Clip video.',
     })
-    return { meta, links }
+    return {
+      meta,
+      links,
+      scripts: [
+        {
+          type: 'application/ld+json',
+          children: JSON.stringify(buildHomepageJsonLd({ origin, locale })),
+        },
+      ],
+    }
   },
   component: Home,
 })
@@ -40,14 +49,14 @@ function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SiteNav theme={theme} loggedIn={loggedIn} />
-      <Hero />
+      <Hero loggedIn={loggedIn} />
       <TechStrip />
-      <ComparisonSection />
+      <ComparisonSection loggedIn={loggedIn} />
       <Features />
       <FeatureGrid />
       <AgentSection />
-      <CTA />
-      <Footer theme={theme} />
+      <CTA loggedIn={loggedIn} />
+      <Footer theme={theme} loggedIn={loggedIn} />
     </div>
   )
 }

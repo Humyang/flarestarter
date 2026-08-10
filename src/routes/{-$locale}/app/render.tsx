@@ -22,12 +22,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useTranslation } from '@/features/i18n/provider'
 import { fmtDateTime } from '@/lib/format-date'
+import { trackEvent } from '@/features/analytics/ga4'
 
 export const Route = createFileRoute('/{-$locale}/app/render')({
   head: () => ({ meta: [{ name: 'robots', content: 'noindex' }] }),
   loader: async ({ params }) => {
-    const [user, ent, jobs] = await Promise.all([
-      requireUser({ data: { locale: (params as { locale?: string }).locale } }),
+    const user = await requireUser({ data: {
+      locale: (params as { locale?: string }).locale,
+      next: '/app/render',
+      entry: 'register',
+    } })
+    const [ent, jobs] = await Promise.all([
       getEntitlement(),
       listRenderJobsFn(),
     ])
@@ -74,6 +79,65 @@ const PHASE_PROGRESS: Record<string, number> = {
 }
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
+
+type RenderAnalyticsEvent = 'render_start' | 'render_complete'
+
+function trackRenderEventOnce(
+  eventName: RenderAnalyticsEvent,
+  job: RenderJobView,
+  locale: 'en' | 'zh',
+  memorySeen: Set<string>,
+) {
+  if (typeof window === 'undefined') return
+  const key = `smart_clip:ga4:${eventName}:v1:${job.id}`
+  if (memorySeen.has(key)) return
+
+  let storage: Storage | undefined
+  try {
+    storage = window.localStorage
+    if (storage.getItem(key) === '1') {
+      memorySeen.add(key)
+      return
+    }
+  } catch {
+    storage = undefined
+  }
+
+  const sent = trackEvent(eventName, {
+    locale,
+    animation_id: job.subtitleAnimationId,
+    translation_language: job.subtitleTranslationLanguage,
+  })
+  if (!sent) return
+
+  memorySeen.add(key)
+  try {
+    storage?.setItem(key, '1')
+  } catch {
+    // Analytics must not interrupt the render workflow when storage is unavailable.
+  }
+}
+
+function trackResultDownload() {
+  if (typeof window === 'undefined') return
+  const key = 'smart_clip:ga4:first_download:v1'
+  let storage: Storage | undefined
+  let firstDownload = true
+  try {
+    storage = window.localStorage
+    firstDownload = storage.getItem(key) !== '1'
+  } catch {
+    storage = undefined
+  }
+
+  if (!trackEvent('result_download', { first_download: firstDownload })) return
+  if (!firstDownload) return
+  try {
+    storage?.setItem(key, '1')
+  } catch {
+    // Analytics must not interrupt a download when storage is unavailable.
+  }
+}
 
 function jobPhase(job: RenderJobView, t: Translate) {
   const fallback = job.status === 'failed' ? 'failed' : job.status === 'submitting' ? 'submitting' : job.status
@@ -163,16 +227,31 @@ function RenderJobsPage() {
   const [busy, setBusy] = useState(false)
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const trackedRenderEvents = useRef(new Set<string>())
   const hasActive = jobs.some((job) => ['submitting', 'queued', 'running'].includes(job.status))
   const normalizedAnimationSearch = animationSearch.trim().toLocaleLowerCase()
   const filteredAnimationIds = SUBTITLE_ANIMATION_IDS.filter((id) => (
     !normalizedAnimationSearch || `${id} ${t(`renderJobs.animation.${id}`)}`.toLocaleLowerCase().includes(normalizedAnimationSearch)
   ))
 
+  function applyJobs(nextJobs: RenderJobView[]) {
+    const previousJobs = jobsRef.current
+    for (const job of nextJobs) {
+      const previous = previousJobs.find((item) => item.id === job.id)
+      if (job.status === 'completed' && previous && previous.status !== 'completed') {
+        trackRenderEventOnce('render_complete', job, locale, trackedRenderEvents.current)
+      }
+    }
+    jobsRef.current = nextJobs
+    setJobs(nextJobs)
+  }
+
+  const jobsRef = useRef(initial.jobs)
+
   useEffect(() => {
     if (!hasActive) return
     const timer = window.setInterval(() => {
-      void syncRenderJobsFn().then(setJobs).catch(() => undefined)
+      void syncRenderJobsFn().then(applyJobs).catch(() => undefined)
     }, 3000)
     return () => window.clearInterval(timer)
   }, [hasActive])
@@ -192,10 +271,11 @@ function RenderJobsPage() {
         toast.error(t(`renderJobs.errors.${result.reason}`))
         return
       }
+      trackRenderEventOnce('render_start', result.job, locale, trackedRenderEvents.current)
       toast.success(t('renderJobs.submitted'))
       setTitle('')
       if (fileRef.current) fileRef.current.value = ''
-      setJobs(await syncRenderJobsFn())
+      applyJobs(await syncRenderJobsFn())
     } catch {
       toast.error(t('renderJobs.errors.unknown'))
     } finally {
@@ -207,7 +287,7 @@ function RenderJobsPage() {
     setRetryingId(jobId)
     try {
       const result = await retryRenderJobFn({ data: { id: jobId } })
-      setJobs(result.jobs)
+      applyJobs(result.jobs)
       if (result.ok) toast.success(t('renderJobs.retried'))
       else toast.error(t(`renderJobs.errors.${result.reason}`))
     } catch {
@@ -428,7 +508,11 @@ function RenderJobsPage() {
                         </Button>
                       )}
                       {job.readyToDownload && (
-                        <a href={`/api/render-outputs/${job.id}`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                        <a
+                          href={`/api/render-outputs/${job.id}`}
+                          onClick={() => trackResultDownload()}
+                          className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                        >
                           <Download size={15} /> {t('renderJobs.download')}
                         </a>
                       )}

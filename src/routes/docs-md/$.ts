@@ -24,7 +24,10 @@ const handler = async ({ request }: { request: Request }) => {
   const text = getLLMText(page)
   if (text == null) return new Response('Not found', { status: 404 })
   return new Response(text, {
-    headers: { 'content-type': 'text/markdown; charset=utf-8' },
+    headers: {
+      'content-type': 'text/markdown; charset=utf-8',
+      'x-robots-tag': 'noindex, nofollow',
+    },
   })
 }
 

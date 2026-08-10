@@ -6,7 +6,7 @@ import { LegalPage } from '@/components/marketing/legal-page'
 const rootRoute = getRouteApi('__root__')
 
 export const Route = createFileRoute('/{-$locale}/terms')({
-  // Placeholder content — keep it out of search until you write real terms.
+  // Review draft: keep it out of search until the owner and counsel approve it.
   head: () => ({ meta: [{ name: 'robots', content: 'noindex' }] }),
   loader: async () => ({ loggedIn: !!(await getOptionalUser()) }),
   component: Terms,
